@@ -15,6 +15,9 @@ def get_all():
 def get_by_user(user_id: str):
     return get_client().table(TABLE).select("*, inventories(*)").eq("user_id", user_id).execute().data
 
+def get_by_inventory(inventory_id: str):
+    return get_client().table(TABLE).select("*, users(*)").eq("inventory_id", inventory_id).execute().data
+
 def get_by_status(status: str):
     return get_client().table(TABLE).select("*, users(*), inventories(*)").eq("status", status).execute().data
 

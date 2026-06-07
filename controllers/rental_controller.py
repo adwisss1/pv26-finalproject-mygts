@@ -39,6 +39,14 @@ def confirm_rental(rental_id: str) -> bool:
         return False
 
 
+def reject_rental(rental_id: str) -> bool:
+    try:
+        RentalModel.update(rental_id, {"status": "rejected"})
+        return True
+    except Exception:
+        return False
+
+
 def set_pickup_photo(rental_id: str, photo_url: str) -> bool:
     try:
         RentalModel.update(rental_id, {"pickup_photo_url": photo_url, "status": "active"})
@@ -67,3 +75,6 @@ def get_rentals_for_owner():
 
 def get_rentals_for_customer(user_id: str):
     return RentalModel.get_by_user(user_id)
+
+def get_rentals_by_inventory(inventory_id: str):
+    return RentalModel.get_by_inventory(inventory_id)

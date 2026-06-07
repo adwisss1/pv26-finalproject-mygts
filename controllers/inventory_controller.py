@@ -10,6 +10,9 @@ CATEGORIES = ["Kostum", "Aksesoris", "Properti", "Alat Musik", "Make Up", "Lainn
 def get_all_inventory():
     return InventoryModel.get_all()
 
+def get_inventory_by_id(item_id: str):
+    return InventoryModel.get_by_id(item_id)
+
 
 def get_by_category(category: str):
     return InventoryModel.get_by_category(category)

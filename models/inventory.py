@@ -10,6 +10,9 @@ TABLE = "inventories"
 def get_all():
     return get_client().table(TABLE).select("*").execute().data
 
+def get_by_id(item_id: str):
+    return get_client().table(TABLE).select("*").eq("id", item_id).single().execute().data
+
 def get_by_category(category: str):
     return get_client().table(TABLE).select("*").eq("category", category).execute().data
 

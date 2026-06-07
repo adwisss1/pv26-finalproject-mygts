@@ -1,0 +1,201 @@
+"""Mock data seeding for demo mode — no Supabase connection needed."""
+
+import hashlib
+from datetime import datetime, timedelta
+
+
+def _hash(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+USERS = [
+    {
+        "id": "u1",
+        "name": "Budi Santoso",
+        "email": "customer@mygts.com",
+        "password_hash": _hash("customer123"),
+        "role": "customer",
+        "phone": "081234567890",
+        "created_at": "2025-01-01T00:00:00Z",
+    },
+    {
+        "id": "u2",
+        "name": "Siti Rahayu",
+        "email": "customer2@mygts.com",
+        "password_hash": _hash("customer123"),
+        "role": "customer",
+        "phone": "081298765432",
+        "created_at": "2025-01-15T00:00:00Z",
+    },
+    {
+        "id": "u_owner",
+        "name": "Admin Sanggar",
+        "email": "owner@mygts.com",
+        "password_hash": _hash("owner123"),
+        "role": "owner",
+        "phone": "081111111111",
+        "created_at": "2024-12-01T00:00:00Z",
+    },
+]
+
+INVENTORIES = [
+    {
+        "id": "i1", "name": "Kostum Tari Merak", "category": "Kostum",
+        "description": "Kostum tari merak warna hijau-emas, ukuran M",
+        "stock": 5, "price_per_day": 75000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-01-10T00:00:00Z",
+    },
+    {
+        "id": "i2", "name": "Kostum Tari Kecak", "category": "Kostum",
+        "description": "Kostum tari kecak motif kotak-kotak, ukuran L",
+        "stock": 8, "price_per_day": 50000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-01-10T00:00:00Z",
+    },
+    {
+        "id": "i3", "name": "Mahkota Pengantin", "category": "Aksesoris",
+        "description": "Mahkota pengantin emas dengan ornamen bunga",
+        "stock": 3, "price_per_day": 100000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-02-01T00:00:00Z",
+    },
+    {
+        "id": "i4", "name": "Anting-anting Tradisional", "category": "Aksesoris",
+        "description": "Anting tradisional perak kombinasi emas",
+        "stock": 10, "price_per_day": 25000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-02-01T00:00:00Z",
+    },
+    {
+        "id": "i5", "name": "Tombak dan Tameng", "category": "Properti",
+        "description": "Set tombak + tameng kayu ukiran",
+        "stock": 6, "price_per_day": 35000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-02-10T00:00:00Z",
+    },
+    {
+        "id": "i6", "name": "Kipas Tari", "category": "Properti",
+        "description": "Kipas tari sutra warna-warni",
+        "stock": 12, "price_per_day": 15000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-02-10T00:00:00Z",
+    },
+    {
+        "id": "i7", "name": "Gamelan Jawa", "category": "Alat Musik",
+        "description": "Seperangkat gamelan jawa laras slendro",
+        "stock": 1, "price_per_day": 500000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-01-05T00:00:00Z",
+    },
+    {
+        "id": "i8", "name": "Kendang Sunda", "category": "Alat Musik",
+        "description": "Kendang sunda ukuran sedang",
+        "stock": 4, "price_per_day": 80000, "condition": "Rusak Ringan", "image_url": "",
+        "created_at": "2025-01-05T00:00:00Z",
+    },
+    {
+        "id": "i9", "name": "Foundation Set", "category": "Make Up",
+        "description": "Set foundation profesional 12 warna",
+        "stock": 2, "price_per_day": 60000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-03-01T00:00:00Z",
+    },
+    {
+        "id": "i10", "name": "Kuas Make Up Set", "category": "Make Up",
+        "description": "Set kuas make up 20 pcs",
+        "stock": 7, "price_per_day": 30000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-03-01T00:00:00Z",
+    },
+    {
+        "id": "i11", "name": "Sandal Jepit Besar", "category": "Lainnya",
+        "description": "Sandal jepit ukuran 43-45, untuk properti lucu",
+        "stock": 15, "price_per_day": 5000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-03-10T00:00:00Z",
+    },
+    {
+        "id": "i12", "name": "Topeng Bali", "category": "Properti",
+        "description": "Topeng bali kayu ukir tangan, berbagai karakter",
+        "stock": 9, "price_per_day": 20000, "condition": "Baik", "image_url": "",
+        "created_at": "2025-02-15T00:00:00Z",
+    },
+]
+
+RENTALS = [
+    {
+        "id": "r1",
+        "user_id": "u1",
+        "inventory_id": "i1",
+        "start_date": "2025-03-01",
+        "end_date": "2025-03-05",
+        "return_date": "2025-03-05",
+        "status": "returned",
+        "pickup_photo_url": "https://mock.supabase.co/pickup_r1.jpg",
+        "return_photo_url": "https://mock.supabase.co/return_r1.jpg",
+        "fine_amount": 0,
+        "notes": "Untuk pentas hari Minggu",
+        "created_at": "2025-02-25T10:00:00Z",
+    },
+    {
+        "id": "r2",
+        "user_id": "u1",
+        "inventory_id": "i3",
+        "start_date": "2025-04-01",
+        "end_date": "2025-04-03",
+        "return_date": "2025-04-05",
+        "status": "returned",
+        "pickup_photo_url": "https://mock.supabase.co/pickup_r2.jpg",
+        "return_photo_url": "https://mock.supabase.co/return_r2.jpg",
+        "fine_amount": 20000,
+        "notes": "Terlambat 2 hari",
+        "created_at": "2025-03-28T14:00:00Z",
+    },
+    {
+        "id": "r3",
+        "user_id": "u2",
+        "inventory_id": "i5",
+        "start_date": "2025-05-10",
+        "end_date": "2025-05-15",
+        "return_date": None,
+        "status": "active",
+        "pickup_photo_url": "https://mock.supabase.co/pickup_r3.jpg",
+        "return_photo_url": "",
+        "fine_amount": 0,
+        "notes": "",
+        "created_at": "2025-05-05T09:00:00Z",
+    },
+    {
+        "id": "r4",
+        "user_id": "u2",
+        "inventory_id": "i7",
+        "start_date": "2025-06-01",
+        "end_date": "2025-06-07",
+        "return_date": None,
+        "status": "confirmed",
+        "pickup_photo_url": "",
+        "return_photo_url": "",
+        "fine_amount": 0,
+        "notes": "Butuh gamelan lengkap",
+        "created_at": "2025-05-20T11:00:00Z",
+    },
+    {
+        "id": "r5",
+        "user_id": "u1",
+        "inventory_id": "i9",
+        "start_date": "2025-06-15",
+        "end_date": "2025-06-17",
+        "return_date": None,
+        "status": "pending",
+        "pickup_photo_url": "",
+        "return_photo_url": "",
+        "fine_amount": 0,
+        "notes": "Untuk acara kondangan",
+        "created_at": "2025-06-10T08:30:00Z",
+    },
+    {
+        "id": "r6",
+        "user_id": "u1",
+        "inventory_id": "i2",
+        "start_date": "2025-04-20",
+        "end_date": "2025-04-22",
+        "return_date": "2025-04-22",
+        "status": "returned",
+        "pickup_photo_url": "https://mock.supabase.co/pickup_r6.jpg",
+        "return_photo_url": "https://mock.supabase.co/return_r6.jpg",
+        "fine_amount": 0,
+        "notes": "Latihan rutin",
+        "created_at": "2025-04-18T10:00:00Z",
+    },
+]

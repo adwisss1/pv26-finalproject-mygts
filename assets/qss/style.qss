@@ -1,62 +1,94 @@
-/* MyGTS Global Stylesheet */
-/* Dibuat oleh: Orang 1 (View Layer) */
+/* MyGTS - Global Stylesheet */
+/* Design System: Modern Minimalist */
 
-QMainWindow, QDialog {
-    background-color: #F7FAF9;
+/* Scrollbar */
+QScrollBar:vertical {
+    background: transparent;
+    width: 6px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: #D4D2CD;
+    border-radius: 3px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #A8A6A2;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
 }
 
-QPushButton {
-    background-color: #1D9E75;
-    color: white;
+QScrollBar:horizontal {
+    background: transparent;
+    height: 6px;
+}
+QScrollBar::handle:horizontal {
+    background: #D4D2CD;
+    border-radius: 3px;
+    min-width: 30px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: #A8A6A2;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+/* Tooltip */
+QToolTip {
+    background: #1A1A1A;
+    color: #ffffff;
     border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 500;
-}
-QPushButton:hover { background-color: #178A64; }
-QPushButton:pressed { background-color: #11694C; }
-QPushButton:disabled { background-color: #B0C9C1; color: #fff; }
-
-QPushButton#btnDanger {
-    background-color: #E05252;
-}
-QPushButton#btnDanger:hover { background-color: #C43C3C; }
-
-QLineEdit, QComboBox, QDateEdit {
-    border: 1.5px solid #D0DDD9;
     border-radius: 6px;
     padding: 6px 10px;
+    font-size: 12px;
+}
+
+/* Menu */
+QMenu {
+    background: #ffffff;
+    border: 0.5px solid #E0DDD8;
+    border-radius: 8px;
+    padding: 4px;
+}
+QMenu::item {
+    padding: 8px 24px;
     font-size: 13px;
-    background: white;
+    color: #1A1A1A;
+    border-radius: 4px;
 }
-QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
-    border-color: #1D9E75;
+QMenu::item:selected {
+    background: #E8F0EE;
+    color: #0F6E56;
 }
-
-QTableView, QTableWidget {
-    border: 1px solid #E0EAE6;
-    border-radius: 6px;
-    background: white;
-    gridline-color: #EEF5F2;
-    font-size: 13px;
-}
-QHeaderView::section {
-    background-color: #1D9E75;
-    color: white;
-    font-weight: 600;
-    padding: 6px;
-    border: none;
+QMenu::separator {
+    height: 0.5px;
+    background: #E0DDD8;
+    margin: 4px 8px;
 }
 
-QLabel#lblTitle {
-    font-size: 20px;
-    font-weight: 700;
-    color: #0D5C42;
+/* Table alternating row colors */
+QTableWidget::item:alternate {
+    background: #FCFBFA;
 }
 
-QStatusBar {
-    font-size: 11px;
-    color: #6B8C80;
-    background: #EEF5F2;
+/* ComboBox dropdown */
+QComboBox QAbstractItemView {
+    background: #ffffff;
+    border: 0.5px solid #E0DDD8;
+    border-radius: 8px;
+    selection-background-color: #E8F0EE;
+    selection-color: #0F6E56;
+    padding: 4px;
+    outline: none;
+}
+
+/* DateEdit calendar popup */
+QDateEdit QCalendarWidget {
+    border: 0.5px solid #E0DDD8;
+    border-radius: 8px;
 }
