@@ -61,6 +61,7 @@ class LoginPage(QWidget):
 
         layout.addSpacing(28)
 
+        # --- KOLOM EMAIL ---
         email_group = QVBoxLayout()
         email_group.setSpacing(6)
         lbl_email = QLabel("Email")
@@ -88,17 +89,12 @@ class LoginPage(QWidget):
 
         layout.addSpacing(16)
 
+        # --- KOLOM KATA SANDI ---
         pw_group = QVBoxLayout()
         pw_group.setSpacing(6)
         lbl_password = QLabel("Kata Sandi")
         lbl_password.setStyleSheet("font-size: 14px; font-weight: 500; color: #1A1A1A;")
         pw_group.addWidget(lbl_password)
-
-        pw_container = QWidget()
-        pw_container.setStyleSheet("background: transparent;")
-        pw_layout = QHBoxLayout(pw_container)
-        pw_layout.setContentsMargins(0, 0, 0, 0)
-        pw_layout.setSpacing(0)
 
         self.login_password = QLineEdit()
         self.login_password.setPlaceholderText("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022")
@@ -117,22 +113,9 @@ class LoginPage(QWidget):
                 color: #A8A6A2;
             }
         """)
-
-        btn_toggle = QPushButton()
-        btn_toggle.setFixedSize(36, 36)
-        btn_toggle.setStyleSheet("""
-            QPushButton {
-                background: transparent; border: none;
-                font-size: 18px; color: #8C8A86;
-            }
-            QPushButton:hover { color: #1A1A1A; }
-        """)
-        btn_toggle.setText("\u25c9")
-        btn_toggle.clicked.connect(lambda: self._toggle_password(self.login_password, btn_toggle))
-
-        pw_layout.addWidget(self.login_password)
-        pw_layout.addWidget(btn_toggle)
-        pw_group.addWidget(pw_container)
+        
+        # Kata sandi sekarang masuk langsung ke grup vertikal (sejajar dengan email)
+        pw_group.addWidget(self.login_password)
         layout.addLayout(pw_group)
 
         layout.addSpacing(24)
@@ -160,14 +143,6 @@ class LoginPage(QWidget):
         outer.addStretch()
         outer.addWidget(card, 0, Qt.AlignCenter)
         outer.addStretch()
-
-    def _toggle_password(self, field, button):
-        if field.echoMode() == QLineEdit.Password:
-            field.setEchoMode(QLineEdit.Normal)
-            button.setText("\u25c8")
-        else:
-            field.setEchoMode(QLineEdit.Password)
-            button.setText("\u25c9")
 
     def _handle_login(self):
         email = self.login_email.text().strip()

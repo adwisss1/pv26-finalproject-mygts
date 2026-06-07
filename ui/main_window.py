@@ -7,14 +7,14 @@ from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QAction, QFont, QPixmap, QPainter, QColor
 
 from ui.pages.login_page import LoginPage
-from ui.pages.dashboard_customer import DashboardCustomer
-from ui.pages.dashboard_owner import DashboardOwner
-from ui.pages.inventory_page import InventoryPage
-from ui.pages.rental_page import RentalPage
-from ui.pages.history_page import HistoryPage
+from ui.pages.customer.dashboard_customer import DashboardCustomer
+from ui.pages.owner.dashboard_owner import DashboardOwner
+from ui.pages.owner.inventory_page import InventoryPage
+from ui.pages.customer.rental_page import RentalPage
+from ui.pages.customer.history_page import HistoryPage
 from ui.pages.item_detail_page import ItemDetailPage
-from ui.pages.confirm_rental_page import ConfirmRentalPage
-from ui.pages.confirm_return_page import ConfirmReturnPage
+from ui.pages.owner.confirm_rental_page import ConfirmRentalPage
+from ui.pages.owner.confirm_return_page import ConfirmReturnPage
 from ui.pages.notification_page import NotificationPage
 
 from controllers.auth_controller import get_current_user, logout as auth_logout, is_owner

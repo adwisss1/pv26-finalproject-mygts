@@ -418,7 +418,7 @@ class ItemDetailPage(QWidget):
     def _edit_item(self):
         if not self._current_item_id:
             return
-        from ui.pages.inventory_page import InventoryDialog
+        from ui.pages.owner.inventory_page import InventoryDialog
         item = get_inventory_by_id(self._current_item_id)
         if not item:
             return
