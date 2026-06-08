@@ -9,7 +9,10 @@ from PySide6.QtGui import QAction, QFont, QPixmap, QPainter, QColor
 from ui.pages.login_page import LoginPage
 from ui.pages.customer.dashboard_customer import DashboardCustomer
 from ui.pages.owner.dashboard_owner import DashboardOwner
-from ui.pages.owner.inventory_page import InventoryPage
+
+from ui.pages.owner.inventory_page import InventoryPage as OwnerInventoryPage
+from ui.pages.customer.inventory_page import InventoryPage as CustomerInventoryPage
+
 from ui.pages.customer.rental_page import RentalPage
 from ui.pages.customer.history_page import HistoryPage
 from ui.pages.item_detail_page import ItemDetailPage
@@ -19,23 +22,26 @@ from ui.pages.notification_page import NotificationPage
 
 from controllers.auth_controller import get_current_user, logout as auth_logout, is_owner
 
+# Definisikan indeks halaman agar tidak tabrakan
 PAGE_LOGIN = 0
 PAGE_DASHBOARD_CUSTOMER = 1
 PAGE_DASHBOARD_OWNER = 2
-PAGE_INVENTORY = 3
+PAGE_INVENTORY_OWNER = 3
 PAGE_RENTAL = 4
 PAGE_HISTORY = 5
 PAGE_ITEM_DETAIL = 6
 PAGE_CONFIRM_RENTAL = 7
 PAGE_CONFIRM_RETURN = 8
 PAGE_NOTIFICATIONS = 9
+PAGE_INVENTORY_CUSTOMER = 10  # <-- Tambahan indeks khusus Customer
 
 PAGE_NAMES = {
     PAGE_DASHBOARD_CUSTOMER: "Beranda",
     PAGE_DASHBOARD_OWNER: "Dashboard",
-    PAGE_INVENTORY: "Kelola Inventaris",
+    PAGE_INVENTORY_OWNER: "Kelola Inventaris",
+    PAGE_INVENTORY_CUSTOMER: "Lihat Inventaris",
     PAGE_RENTAL: "Penyewaan Saya",
-    PAGE_HISTORY: "Laporan & Riwayat",   # <-- fix: hilangkan underscore
+    PAGE_HISTORY: "Laporan & Riwayat",
     PAGE_ITEM_DETAIL: "Detail Item",
     PAGE_CONFIRM_RENTAL: "Konfirmasi Penyewaan",
     PAGE_CONFIRM_RETURN: "Konfirmasi Pengembalian",
@@ -47,11 +53,6 @@ PAGE_NAMES = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _NavItem(QWidget):
-    """
-    Satu baris nav: [label teks] [badge opsional] di sisi kanan.
-    Dirender sebagai QWidget supaya badge tidak bentrok dengan layout QPushButton.
-    """
-
     clicked = Signal(str)
 
     _STYLE_NORMAL = """
@@ -108,7 +109,6 @@ class _NavItem(QWidget):
         self._btn.clicked.connect(lambda: self.clicked.emit(self._key))
         row.addWidget(self._btn, 1)
 
-        # Badge (hanya tampil jika badge_text diberikan)
         self._badge = None
         if badge_text:
             self._badge = QLabel(badge_text)
@@ -120,7 +120,6 @@ class _NavItem(QWidget):
                 background: #E24B4A;
                 border-radius: 10px;
             """)
-            # Posisikan badge di kanan dengan sedikit margin
             badge_wrap = QWidget()
             badge_wrap.setFixedSize(36, 40)
             badge_wrap.setStyleSheet("background: transparent;")
@@ -145,12 +144,10 @@ class _NavItem(QWidget):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SIDEBAR — owner & customer dipisah dengan jelas
+#  SIDEBAR
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Definisi nav item per peran — dipisah di luar kelas supaya mudah diedit
 _OWNER_NAV = [
-    # (key,          label,                    badge)
     ("dashboard",   "Dashboard",                  None),
     ("inventory",   "Kelola Inventaris",        None),
     ("pending",     "Konfirmasi Penyewaan",    "3"),
@@ -166,7 +163,6 @@ _CUSTOMER_NAV = [
     ("history",      "Riwayat Sewa",     None),
     ("notifications","Notifikasi",       None),
 ]
-
 
 class Sidebar(QFrame):
     navigate = Signal(str)
@@ -188,17 +184,13 @@ class Sidebar(QFrame):
         """)
         self._build()
 
-    # ── Layout kerangka (dipanggil sekali) ──────────────────────────────────
-
     def _build(self):
         self._main_layout = QVBoxLayout(self)
         self._main_layout.setContentsMargins(0, 0, 0, 0)
         self._main_layout.setSpacing(0)
 
-        # Brand header
         self._main_layout.addWidget(self._make_brand())
 
-        # Nav area (diisi ulang saat peran berubah)
         self._nav_container = QWidget()
         self._nav_container.setStyleSheet("background: transparent;")
         self._nav_layout = QVBoxLayout(self._nav_container)
@@ -208,10 +200,7 @@ class Sidebar(QFrame):
 
         self._main_layout.addStretch(1)
 
-        # User info footer
         self._main_layout.addWidget(self._make_user_footer())
-
-        # Isi nav pertama kali
         self._rebuild_nav()
 
     def _make_brand(self) -> QWidget:
@@ -260,17 +249,13 @@ class Sidebar(QFrame):
         al.setContentsMargins(0, 0, 0, 0)
         ai = QLabel("U")
         ai.setAlignment(Qt.AlignCenter)
-        ai.setStyleSheet(
-            "font-size: 13px; font-weight: 600; color: #ffffff; background: transparent;"
-        )
+        ai.setStyleSheet("font-size: 13px; font-weight: 600; color: #ffffff; background: transparent;")
         al.addWidget(ai)
 
         user_text = QVBoxLayout()
         user_text.setSpacing(3)
         self.sidebar_user_name = QLabel("User")
-        self.sidebar_user_name.setStyleSheet(
-            "font-size: 13px; font-weight: 500; color: #1A1A1A; background: transparent;"
-        )
+        self.sidebar_user_name.setStyleSheet("font-size: 13px; font-weight: 500; color: #1A1A1A; background: transparent;")
         self.sidebar_user_role = QLabel("Customer")
         self.sidebar_user_role.setObjectName("roleBadge")
         self._apply_role_badge_style("customer")
@@ -282,33 +267,25 @@ class Sidebar(QFrame):
         ul.addLayout(user_text, 1)
         return user_wrap
 
-    # ── Nav rebuild (dipanggil setiap ganti peran) ───────────────────────────
-
     def _rebuild_nav(self):
-        # Bersihkan nav lama
         while self._nav_layout.count():
             item = self._nav_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
         self._nav_items.clear()
 
-        # Pilih data sesuai peran
         if self._current_role == "owner":
             nav_data = _OWNER_NAV
         else:
             nav_data = _CUSTOMER_NAV
 
-        # Buat _NavItem untuk setiap entry
         for key, label, badge in nav_data:
             item = _NavItem(key, label, badge)
             item.clicked.connect(self.navigate.emit)
             self._nav_layout.addWidget(item)
             self._nav_items[key] = item
 
-        # Terapkan active state
         self._apply_active()
-
-    # ── Public API (tidak berubah dari versi asli) ───────────────────────────
 
     def set_active(self, key: str):
         self._current_active = key
@@ -325,13 +302,9 @@ class Sidebar(QFrame):
     def set_user(self, name: str, role: str):
         self._current_role = role
         self.sidebar_user_name.setText(name)
-        self.sidebar_user_role.setText(
-            "Pemilik Sanggar" if role == "owner" else "Customer"
-        )
+        self.sidebar_user_role.setText("Pemilik Sanggar" if role == "owner" else "Customer")
         self._apply_role_badge_style(role)
         self._rebuild_nav()
-
-    # ── Internal helper ──────────────────────────────────────────────────────
 
     def _apply_active(self):
         for key, item in self._nav_items.items():
@@ -347,7 +320,7 @@ class Sidebar(QFrame):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  TOP BAR  (tidak ada perubahan)
+#  TOP BAR
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TopBar(QFrame):
@@ -361,18 +334,13 @@ class TopBar(QFrame):
 
     def _build(self):
         self.setStyleSheet("""
-            #topbar {
-                background: #ffffff;
-                border-bottom: 0.5px solid #E0DDD8;
-            }
+            #topbar { background: #ffffff; border-bottom: 0.5px solid #E0DDD8; }
         """)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(24, 0, 24, 0)
 
         self.title_label = QLabel("Beranda")
-        self.title_label.setStyleSheet(
-            "font-size: 22px; font-weight: 500; color: #1A1A1A; letter-spacing: -0.3px;"
-        )
+        self.title_label.setStyleSheet("font-size: 22px; font-weight: 500; color: #1A1A1A; letter-spacing: -0.3px;")
         layout.addWidget(self.title_label)
         layout.addStretch()
 
@@ -402,7 +370,7 @@ class TopBar(QFrame):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  MAIN WINDOW  (tidak ada perubahan logika)
+#  MAIN WINDOW
 # ─────────────────────────────────────────────────────────────────────────────
 
 class MainWindow(QMainWindow):
@@ -440,9 +408,11 @@ class MainWindow(QMainWindow):
         self.topbar.logout_requested.connect(self._on_logout)
         self.topbar.setVisible(False)
 
+        # Inisiasi QStackedWidget HANYA SEKALI
         self.stack = QStackedWidget()
         self.stack.setStyleSheet("background: #F8F7F4;")
 
+        # Inisiasi semua halaman
         self.login_page = LoginPage()
         self.login_page.login_successful.connect(self._on_login_success)
 
@@ -452,10 +422,16 @@ class MainWindow(QMainWindow):
         self.dashboard_owner = DashboardOwner()
         self.dashboard_owner.navigate_to.connect(self._navigate_by_name)
 
-        self.inventory_page = InventoryPage()
-        self.inventory_page.open_detail.connect(self._open_item_detail)
+        self.owner_inventory_page = OwnerInventoryPage()
+        if hasattr(self.owner_inventory_page, 'open_detail'):
+            self.owner_inventory_page.open_detail.connect(self._open_item_detail)
+
+        self.customer_inventory_page = CustomerInventoryPage()
+        self.customer_inventory_page.open_detail.connect(self._open_item_detail)
+
         self.rental_page = RentalPage()
         self.rental_page.navigate_to.connect(self._navigate_by_name)
+        
         self.history_page = HistoryPage()
         self.history_page.navigate_to.connect(self._navigate_by_name)
 
@@ -472,16 +448,18 @@ class MainWindow(QMainWindow):
         self.notification_page = NotificationPage()
         self.notification_page.navigate_to.connect(self._navigate_by_name)
 
-        self.stack.addWidget(self.login_page)
-        self.stack.addWidget(self.dashboard_customer)
-        self.stack.addWidget(self.dashboard_owner)
-        self.stack.addWidget(self.inventory_page)
-        self.stack.addWidget(self.rental_page)
-        self.stack.addWidget(self.history_page)
-        self.stack.addWidget(self.item_detail_page)
-        self.stack.addWidget(self.confirm_rental_page)
-        self.stack.addWidget(self.confirm_return_page)
-        self.stack.addWidget(self.notification_page)
+        # Masukkan ke stack SESUAI URUTAN INDEKS PAGE_*
+        self.stack.addWidget(self.login_page)                # 0
+        self.stack.addWidget(self.dashboard_customer)        # 1
+        self.stack.addWidget(self.dashboard_owner)           # 2
+        self.stack.addWidget(self.owner_inventory_page)      # 3
+        self.stack.addWidget(self.rental_page)               # 4
+        self.stack.addWidget(self.history_page)              # 5
+        self.stack.addWidget(self.item_detail_page)          # 6
+        self.stack.addWidget(self.confirm_rental_page)       # 7
+        self.stack.addWidget(self.confirm_return_page)       # 8
+        self.stack.addWidget(self.notification_page)         # 9
+        self.stack.addWidget(self.customer_inventory_page)   # 10
 
         right_layout.addWidget(self.topbar)
         right_layout.addWidget(self.stack, 1)
@@ -502,9 +480,7 @@ class MainWindow(QMainWindow):
 
     def _build_status_bar(self):
         status = QStatusBar()
-        status.setStyleSheet(
-            "font-size: 11px; color: #8C8A86; background: #F8F7F4; border-top: 0.5px solid #E0DDD8;"
-        )
+        status.setStyleSheet("font-size: 11px; color: #8C8A86; background: #F8F7F4; border-top: 0.5px solid #E0DDD8;")
         self.setStatusBar(status)
 
     def _show_login(self):
@@ -545,17 +521,17 @@ class MainWindow(QMainWindow):
         if role == "owner":
             mapping = {
                 "dashboard":     PAGE_DASHBOARD_OWNER,
-                "inventory":     PAGE_INVENTORY,
+                "inventory":     PAGE_INVENTORY_OWNER,  # Owner pakai Inventory Owner
                 "pending":       PAGE_CONFIRM_RENTAL,
                 "returns":       PAGE_CONFIRM_RETURN,
-                "add_item":      PAGE_INVENTORY,
+                "add_item":      PAGE_INVENTORY_OWNER,
                 "history":       PAGE_HISTORY,
                 "notifications": PAGE_NOTIFICATIONS,
             }
         else:
             mapping = {
                 "dashboard":     PAGE_DASHBOARD_CUSTOMER,
-                "inventory":     PAGE_INVENTORY,
+                "inventory":     PAGE_INVENTORY_CUSTOMER, # Customer pakai Inventory Customer
                 "rental":        PAGE_RENTAL,
                 "history":       PAGE_HISTORY,
                 "notifications": PAGE_NOTIFICATIONS,
@@ -575,7 +551,7 @@ class MainWindow(QMainWindow):
 
     def _open_item_detail(self, item_id):
         self.item_detail_page.load_item(item_id)
-        self.topbar.set_title("Item Detail")
+        self.topbar.set_title("Detail Item")
         self.stack.setCurrentIndex(PAGE_ITEM_DETAIL)
         self.sidebar.set_active("inventory")
 
