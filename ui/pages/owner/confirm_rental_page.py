@@ -1,202 +1,385 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QScrollArea, QMessageBox
+    QFrame, QScrollArea, QMessageBox, QGraphicsDropShadowEffect
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QColor
+
 from controllers.rental_controller import (
     get_rentals_for_owner, confirm_rental, reject_rental, calculate_fine
 )
 from controllers.auth_controller import get_current_user
 
 
-TAB_STYLES = {
-    "active": """
-        QPushButton {
-            background: transparent; border: none; border-bottom: 2px solid #0F6E56;
-            font-size: 14px; font-weight: 600; color: #0F6E56; padding: 8px 16px;
-        }
-    """,
-    "inactive": """
-        QPushButton {
-            background: transparent; border: none; border-bottom: 2px solid transparent;
-            font-size: 14px; font-weight: 400; color: #8C8A86; padding: 8px 16px;
-        }
-        QPushButton:hover { color: #1A1A1A; }
-    """,
-}
+# ─────────────────────────────────────────────────────────────────────────────
+#  TAB BAR  — pill style modern
+# ─────────────────────────────────────────────────────────────────────────────
 
+class TabBar(QFrame):
+    tab_changed = Signal(str)
+
+    TABS = [
+        ("pending",   "Menunggu",        "⏳"),
+        ("confirmed", "Dikonfirmasi",     "✅"),
+        ("rejected",  "Ditolak",          "✗"),
+    ]
+
+    def __init__(self):
+        super().__init__()
+        self._active = "pending"
+        self._buttons: dict[str, QPushButton] = {}
+        self._counts: dict[str, int] = {}
+        self.setObjectName("tabBar")
+        self.setFixedHeight(52)
+        self.setStyleSheet("""
+            #tabBar {
+                background: #ECEAE6;
+                border-radius: 14px;
+            }
+        """)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(4)
+
+        for key, label, icon in self.TABS:
+            btn = QPushButton(f"{icon}  {label}")
+            btn.setObjectName(f"tab_{key}")
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(42)
+            btn.clicked.connect(lambda checked, k=key: self._on_click(k))
+            layout.addWidget(btn)
+            self._buttons[key] = btn
+
+        self._apply_styles()
+
+    def _on_click(self, key: str):
+        self._active = key
+        self._apply_styles()
+        self.tab_changed.emit(key)
+
+    def set_count(self, key: str, count: int):
+        self._counts[key] = count
+        self._apply_styles()
+
+    def _apply_styles(self):
+        for key, btn in self._buttons.items():
+            label_map = {"pending": "Menunggu", "confirmed": "Dikonfirmasi", "rejected": "Ditolak"}
+            icon_map  = {"pending": "⏳", "confirmed": "✅", "rejected": "✗"}
+            cnt = self._counts.get(key, 0)
+            cnt_str = f"  ({cnt})" if key == "pending" and cnt > 0 else ""
+            btn.setText(f"{icon_map[key]}  {label_map[key]}{cnt_str}")
+
+            if key == self._active:
+                color_map = {
+                    "pending":   ("#0F6E56", "#ffffff"),
+                    "confirmed": ("#1D9E75", "#ffffff"),
+                    "rejected":  ("#E24B4A", "#ffffff"),
+                }
+                bg, fg = color_map[key]
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background: {bg};
+                        border: none;
+                        border-radius: 10px;
+                        font-size: 13px;
+                        font-weight: 600;
+                        color: {fg};
+                        padding: 0 18px;
+                    }}
+                """)
+            else:
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: transparent;
+                        border: none;
+                        border-radius: 10px;
+                        font-size: 13px;
+                        font-weight: 400;
+                        color: #6B6A66;
+                        padding: 0 18px;
+                    }
+                    QPushButton:hover {
+                        background: #D8D6D2;
+                        color: #1A1A1A;
+                    }
+                """)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  RENTAL CONFIRM CARD  — modern card design
+# ─────────────────────────────────────────────────────────────────────────────
 
 class RentalConfirmCard(QFrame):
     confirmed = Signal(str)
-    rejected = Signal(str)
+    rejected  = Signal(str)
 
-    def __init__(self, rental_data, mode):
+    _STATUS_CONFIG = {
+        "pending":   ("#F59E0B", "#FFFBEB", "Menunggu"),
+        "confirmed": ("#0F6E56", "#F0FDF8", "Dikonfirmasi"),
+        "rejected":  ("#E24B4A", "#FEF2F2", "Ditolak"),
+    }
+
+    def __init__(self, rental_data: dict, mode: str):
         super().__init__()
         self._rental_id = rental_data.get("id", "")
-        self._data = rental_data
-        self._mode = mode  # "pending", "confirmed", "rejected"
+        self._mode = mode
         self.setObjectName("confirmCard")
-        border_color = "#FFB347" if mode == "pending" else ("#0F6E56" if mode == "confirmed" else "#D4D2CD")
+
+        accent, bg, _ = self._STATUS_CONFIG.get(mode, ("#ccc", "#fff", "-"))
         self.setStyleSheet(f"""
             #confirmCard {{
-                background: #ffffff; border: 0.5px solid #E0DDD8;
-                border-left: 3px solid {border_color};
-                border-radius: 12px;
+                background: #ffffff;
+                border: 1px solid #ECEAE6;
+                border-left: 4px solid {accent};
+                border-radius: 14px;
+            }}
+            #confirmCard:hover {{
+                border-color: {accent};
+                border-left: 4px solid {accent};
             }}
         """)
-        self._build(rental_data, mode)
 
-    def _build(self, r, mode):
-        inv_data = r.get("inventories") or {}
-        user_data = r.get("users") or {}
+        # Drop shadow
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(16)
+        shadow.setOffset(0, 2)
+        shadow.setColor(QColor(0, 0, 0, 18))
+        self.setGraphicsEffect(shadow)
+
+        self._build(rental_data, mode, accent, bg)
+
+    def _build(self, r: dict, mode: str, accent: str, bg: str):
+        from datetime import datetime
+
+        inv   = r.get("inventories") or {}
+        user  = r.get("users") or {}
         start = r.get("start_date", "")
-        end = r.get("end_date", "")
-        price = inv_data.get("price_per_day", 0)
+        end   = r.get("end_date", "")
+        price = inv.get("price_per_day", 0)
         notes = r.get("notes", "")
 
         days = 0
         if start and end:
-            from datetime import datetime
             try:
-                sd = datetime.strptime(start, "%Y-%m-%d")
-                ed = datetime.strptime(end, "%Y-%m-%d")
-                days = max(1, (ed - sd).days)
+                days = max(1, (datetime.strptime(end, "%Y-%m-%d") - datetime.strptime(start, "%Y-%m-%d")).days)
             except ValueError:
                 days = 0
         total = price * days
 
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        outer = QHBoxLayout(self)
+        outer.setContentsMargins(20, 20, 20, 20)
+        outer.setSpacing(20)
 
-        left_col = QVBoxLayout()
-        left_col.setAlignment(Qt.AlignCenter)
-        left_col.setSpacing(6)
+        # ── Avatar kolom ──────────────────────────────────────────────────
+        avatar_col = QVBoxLayout()
+        avatar_col.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
+        avatar_col.setSpacing(8)
 
         avatar = QFrame()
-        avatar.setFixedSize(44, 44)
-        avatar.setStyleSheet("background: #EDECE8; border-radius: 22px;")
-        al = QVBoxLayout(avatar)
-        al.setAlignment(Qt.AlignCenter)
-        ai = QLabel(user_data.get("name", "?")[0].upper() if user_data.get("name") else "?")
-        ai.setStyleSheet("font-size: 18px; font-weight: 600; color: #6B6A66; background: transparent;")
-        al.addWidget(ai)
-        left_col.addWidget(avatar, 0, Qt.AlignCenter)
+        avatar.setFixedSize(52, 52)
+        avatar.setStyleSheet(f"""
+            background: {accent}22;
+            border-radius: 26px;
+            border: 2px solid {accent}44;
+        """)
+        av_lay = QVBoxLayout(avatar)
+        av_lay.setAlignment(Qt.AlignCenter)
+        av_lay.setContentsMargins(0, 0, 0, 0)
+        initial = (user.get("name") or "?")[0].upper()
+        av_lbl = QLabel(initial)
+        av_lbl.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {accent}; background: transparent;")
+        av_lbl.setAlignment(Qt.AlignCenter)
+        av_lay.addWidget(av_lbl)
 
-        name_lbl = QLabel(user_data.get("name", "-"))
-        name_lbl.setStyleSheet("font-size: 12px; font-weight: 500; color: #1A1A1A; background: transparent;")
+        name_lbl = QLabel(user.get("name", "-"))
         name_lbl.setAlignment(Qt.AlignCenter)
-        left_col.addWidget(name_lbl)
+        name_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #1A1A1A; background: transparent;")
 
-        badge = QFrame()
-        badge.setStyleSheet("background: #E8F0EE; border-radius: 4px;")
-        bl = QHBoxLayout(badge)
-        bl.setContentsMargins(6, 2, 6, 2)
-        bt = QLabel("Customer")
-        bt.setStyleSheet("font-size: 10px; font-weight: 600; color: #0F6E56; background: transparent;")
-        bl.addWidget(bt)
-        left_col.addWidget(badge, 0, Qt.AlignCenter)
+        role_badge = QLabel("Customer")
+        role_badge.setAlignment(Qt.AlignCenter)
+        role_badge.setStyleSheet("""
+            font-size: 10px; font-weight: 600; color: #0F6E56;
+            background: #E8F5F1; border-radius: 4px;
+            padding: 2px 8px;
+        """)
 
-        left = QWidget()
-        left.setLayout(left_col)
-        left.setFixedWidth(80)
+        avatar_col.addWidget(avatar, 0, Qt.AlignHCenter)
+        avatar_col.addWidget(name_lbl)
+        avatar_col.addWidget(role_badge, 0, Qt.AlignHCenter)
 
-        center_col = QVBoxLayout()
-        center_col.setSpacing(4)
+        av_widget = QWidget()
+        av_widget.setLayout(avatar_col)
+        av_widget.setFixedWidth(90)
+        av_widget.setStyleSheet("background: transparent;")
+        outer.addWidget(av_widget)
 
-        item_name = QLabel(inv_data.get("name", "-"))
-        item_name.setStyleSheet("font-size: 15px; font-weight: 600; color: #1A1A1A; background: transparent;")
-        center_col.addWidget(item_name)
+        # ── Divider ───────────────────────────────────────────────────────
+        div = QFrame()
+        div.setFixedWidth(1)
+        div.setStyleSheet("background: #ECEAE6; border: none;")
+        outer.addWidget(div)
 
-        cat_lbl = QLabel(f"Kategori: {inv_data.get('category', '-')}")
-        cat_lbl.setStyleSheet("font-size: 13px; color: #6B6A66; background: transparent;")
-        center_col.addWidget(cat_lbl)
+        # ── Info kolom ────────────────────────────────────────────────────
+        info_col = QVBoxLayout()
+        info_col.setSpacing(6)
+        info_col.setAlignment(Qt.AlignTop)
 
-        dates_lbl = QLabel(f"Tgl Ambil: {start} | Kembali: {end}")
-        dates_lbl.setStyleSheet("font-size: 13px; color: #6B6A66; background: transparent;")
-        center_col.addWidget(dates_lbl)
+        item_name = QLabel(inv.get("name", "-"))
+        item_name.setStyleSheet(
+            "font-size: 16px; font-weight: 700; color: #111111; background: transparent;"
+        )
+        info_col.addWidget(item_name)
 
-        total_lbl = QLabel(f"Total: Rp {total:,}")
-        total_lbl.setStyleSheet("font-size: 14px; font-weight: 600; color: #0F6E56; background: transparent;")
-        center_col.addWidget(total_lbl)
+        # Kategori pill
+        cat_row = QHBoxLayout()
+        cat_row.setSpacing(8)
+        cat_badge = QLabel(f"📁  {inv.get('category', '-')}")
+        cat_badge.setStyleSheet("""
+            font-size: 11px; font-weight: 500; color: #6B6A66;
+            background: #F4F3F0; border-radius: 6px;
+            padding: 3px 10px;
+        """)
+        cat_row.addWidget(cat_badge)
+        cat_row.addStretch()
+        info_col.addLayout(cat_row)
+
+        # Tanggal
+        date_lbl = QLabel(f"📅  {start}  →  {end}   ({days} hari)")
+        date_lbl.setStyleSheet(
+            "font-size: 13px; color: #6B6A66; background: transparent;"
+        )
+        info_col.addWidget(date_lbl)
+
+        # Total harga
+        total_lbl = QLabel(f"💰  Rp {total:,.0f}".replace(",", "."))
+        total_lbl.setStyleSheet(
+            f"font-size: 15px; font-weight: 700; color: {accent}; background: transparent;"
+        )
+        info_col.addWidget(total_lbl)
 
         if notes:
-            notes_lbl = QLabel(f"Catatan: {notes}")
-            notes_lbl.setStyleSheet("font-size: 12px; color: #A8A6A2; background: transparent;")
+            notes_lbl = QLabel(f"📝  {notes}")
             notes_lbl.setWordWrap(True)
-            center_col.addWidget(notes_lbl)
+            notes_lbl.setStyleSheet(
+                "font-size: 12px; color: #A8A6A2; background: transparent; font-style: italic;"
+            )
+            info_col.addWidget(notes_lbl)
 
-        thumbs_row = QHBoxLayout()
-        thumbs_row.setSpacing(6)
-        for _ in range(3):
-            thumb = QFrame()
-            thumb.setFixedSize(60, 60)
-            thumb.setStyleSheet("background: #EDECE8; border: 0.5px solid #D4D2CD; border-radius: 6px;")
-            tl = QVBoxLayout(thumb)
-            tl.setAlignment(Qt.AlignCenter)
-            ti = QLabel("\u2610")
-            ti.setStyleSheet("font-size: 20px; color: #A8A6A2; background: transparent;")
-            tl.addWidget(ti)
-            thumbs_row.addWidget(thumb)
-        center_col.addLayout(thumbs_row)
+        info_widget = QWidget()
+        info_widget.setLayout(info_col)
+        info_widget.setStyleSheet("background: transparent;")
+        outer.addWidget(info_widget, 1)
 
-        center = QWidget()
-        center.setLayout(center_col)
-
-        right_col = QVBoxLayout()
-        right_col.setSpacing(8)
-        right_col.setAlignment(Qt.AlignCenter)
+        # ── Aksi kolom ────────────────────────────────────────────────────
+        action_col = QVBoxLayout()
+        action_col.setAlignment(Qt.AlignCenter)
+        action_col.setSpacing(10)
 
         if mode == "pending":
-            confirm_btn = QPushButton("\u2713 Konfirmasi")
+            confirm_btn = QPushButton("✓  Konfirmasi")
             confirm_btn.setCursor(Qt.PointingHandCursor)
-            confirm_btn.setFixedHeight(36)
+            confirm_btn.setFixedSize(140, 40)
             confirm_btn.setStyleSheet("""
                 QPushButton {
-                    background: #0F6E56; border: none; border-radius: 8px;
-                    padding: 0 20px; font-size: 12px; font-weight: 600; color: #ffffff;
+                    background: #0F6E56; border: none; border-radius: 10px;
+                    font-size: 13px; font-weight: 600; color: #ffffff;
                 }
                 QPushButton:hover { background: #0A5A45; }
+                QPushButton:pressed { background: #084D3C; }
             """)
             confirm_btn.clicked.connect(lambda: self.confirmed.emit(self._rental_id))
 
-            reject_btn = QPushButton("\u2717 Tolak")
+            reject_btn = QPushButton("✗  Tolak")
             reject_btn.setCursor(Qt.PointingHandCursor)
-            reject_btn.setFixedHeight(36)
+            reject_btn.setFixedSize(140, 40)
             reject_btn.setStyleSheet("""
                 QPushButton {
-                    background: transparent; border: 1px solid #E24B4A; border-radius: 8px;
-                    padding: 0 20px; font-size: 12px; font-weight: 500; color: #E24B4A;
+                    background: transparent;
+                    border: 1.5px solid #E24B4A;
+                    border-radius: 10px;
+                    font-size: 13px; font-weight: 500; color: #E24B4A;
                 }
                 QPushButton:hover { background: #FDE8E8; }
+                QPushButton:pressed { background: #FDD0D0; }
             """)
             reject_btn.clicked.connect(lambda: self.rejected.emit(self._rental_id))
 
-            right_col.addWidget(confirm_btn)
-            right_col.addWidget(reject_btn)
-        elif mode == "confirmed":
-            confirmed_lbl = QLabel("Sudah Dikonfirmasi")
-            confirmed_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #1D9E75; background: transparent;")
-            confirmed_lbl.setAlignment(Qt.AlignCenter)
-            right_col.addWidget(confirmed_lbl)
-        elif mode == "rejected":
-            rejected_lbl = QLabel("Ditolak")
-            rejected_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #E24B4A; background: transparent;")
-            rejected_lbl.setAlignment(Qt.AlignCenter)
-            right_col.addWidget(rejected_lbl)
+            action_col.addWidget(confirm_btn)
+            action_col.addWidget(reject_btn)
 
-        right = QWidget()
-        right.setLayout(right_col)
-        right.setFixedWidth(150)
+        else:
+            accent_c, bg_c, label_c = self._STATUS_CONFIG.get(mode, ("#ccc", "#eee", "-"))
+            status_chip = QFrame()
+            status_chip.setStyleSheet(f"""
+                background: {bg_c};
+                border: 1.5px solid {accent_c}44;
+                border-radius: 10px;
+            """)
+            chip_lay = QHBoxLayout(status_chip)
+            chip_lay.setContentsMargins(14, 10, 14, 10)
+            dot = QFrame()
+            dot.setFixedSize(8, 8)
+            dot.setStyleSheet(f"background: {accent_c}; border-radius: 4px;")
+            chip_lbl = QLabel(label_c)
+            chip_lbl.setStyleSheet(
+                f"font-size: 13px; font-weight: 600; color: {accent_c}; background: transparent;"
+            )
+            chip_lay.addWidget(dot)
+            chip_lay.addSpacing(8)
+            chip_lay.addWidget(chip_lbl)
+            action_col.addWidget(status_chip)
 
-        layout.addWidget(left)
-        layout.addWidget(center, 1)
-        layout.addWidget(right)
+        action_widget = QWidget()
+        action_widget.setLayout(action_col)
+        action_widget.setFixedWidth(160)
+        action_widget.setStyleSheet("background: transparent;")
+        outer.addWidget(action_widget)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  EMPTY STATE
+# ─────────────────────────────────────────────────────────────────────────────
+
+class EmptyState(QWidget):
+    _CONFIG = {
+        "pending":   ("⏳", "Tidak ada penyewaan menunggu",   "Semua permintaan sudah ditangani."),
+        "confirmed": ("✅", "Belum ada yang dikonfirmasi",     "Penyewaan yang disetujui akan muncul di sini."),
+        "rejected":  ("✗",  "Tidak ada yang ditolak",         "Penyewaan yang ditolak akan muncul di sini."),
+    }
+
+    def __init__(self, tab: str):
+        super().__init__()
+        icon, title, sub = self._CONFIG.get(tab, ("📭", "Kosong", ""))
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignCenter)
+        layout.setSpacing(10)
+        layout.setContentsMargins(0, 48, 0, 48)
+
+        ic = QLabel(icon)
+        ic.setAlignment(Qt.AlignCenter)
+        ic.setStyleSheet("font-size: 40px; background: transparent;")
+
+        tl = QLabel(title)
+        tl.setAlignment(Qt.AlignCenter)
+        tl.setStyleSheet("font-size: 16px; font-weight: 600; color: #3A3A3A; background: transparent;")
+
+        sl = QLabel(sub)
+        sl.setAlignment(Qt.AlignCenter)
+        sl.setStyleSheet("font-size: 13px; color: #A8A6A2; background: transparent;")
+
+        layout.addWidget(ic)
+        layout.addWidget(tl)
+        layout.addWidget(sl)
+        self.setStyleSheet("background: transparent;")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CONFIRM RENTAL PAGE
+# ─────────────────────────────────────────────────────────────────────────────
 
 class ConfirmRentalPage(QWidget):
-    navigate_to = Signal(str)
-    badge_updated = Signal(str, str)  # key, count_text
+    navigate_to  = Signal(str)
+    badge_updated = Signal(str, str)
 
     def __init__(self):
         super().__init__()
@@ -209,6 +392,7 @@ class ConfirmRentalPage(QWidget):
     def _build_ui(self):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -217,103 +401,94 @@ class ConfirmRentalPage(QWidget):
 
         content = QWidget()
         content.setStyleSheet("background: transparent;")
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        self._content_layout = QVBoxLayout(content)
+        self._content_layout.setContentsMargins(28, 28, 28, 28)
+        self._content_layout.setSpacing(20)
 
-        title = QLabel("Konfirmasi Penyewaan")
-        title.setStyleSheet("font-size: 22px; font-weight: 500; color: #1A1A1A; letter-spacing: -0.3px;")
-        layout.addWidget(title)
+        # ── Header (TANPA duplikasi — topbar sudah tampilkan judul) ──────
+        header_row = QHBoxLayout()
+        sub = QLabel("Kelola dan tindaklanjuti permintaan penyewaan dari customer.")
+        sub.setStyleSheet("font-size: 13px; color: #8C8A86; background: transparent;")
+        header_row.addWidget(sub)
+        header_row.addStretch()
 
-        self.tab_row = QHBoxLayout()
-        self.tab_row.setSpacing(0)
+        # Summary count pill
+        self._summary_pill = QLabel("Memuat...")
+        self._summary_pill.setStyleSheet("""
+            font-size: 12px; color: #0F6E56; font-weight: 600;
+            background: #E8F5F1; border-radius: 20px;
+            padding: 6px 14px;
+        """)
+        header_row.addWidget(self._summary_pill)
+        self._content_layout.addLayout(header_row)
 
-        self.tab_buttons = {}
-        for key, label in [("pending", "Menunggu Konfirmasi"), ("confirmed", "Sudah Dikonfirmasi"), ("rejected", "Ditolak")]:
-            btn = QPushButton(label)
-            btn.setCursor(Qt.PointingHandCursor)
-            btn.clicked.connect(lambda checked, k=key: self._switch_tab(k))
-            self.tab_buttons[key] = btn
-            self.tab_row.addWidget(btn)
+        # ── Tab bar ──────────────────────────────────────────────────────
+        self._tab_bar = TabBar()
+        self._tab_bar.tab_changed.connect(self._switch_tab)
 
-        self.tab_row.addStretch()
-        layout.addLayout(self.tab_row)
+        tab_wrap = QHBoxLayout()
+        tab_wrap.addWidget(self._tab_bar)
+        tab_wrap.addStretch()
+        self._content_layout.addLayout(tab_wrap)
 
-        self.cards_container = QVBoxLayout()
-        self.cards_container.setSpacing(12)
-        layout.addLayout(self.cards_container)
-
-        self.empty_label = QLabel("")
-        self.empty_label.setStyleSheet("font-size: 14px; color: #8C8A86; padding: 40px; background: transparent;")
-        self.empty_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.empty_label)
+        # ── Cards area ───────────────────────────────────────────────────
+        self._cards_container = QVBoxLayout()
+        self._cards_container.setSpacing(12)
+        self._content_layout.addLayout(self._cards_container)
+        self._content_layout.addStretch()
 
         scroll.setWidget(content)
         outer.addWidget(scroll)
-        self._apply_tab_style()
 
-    def _apply_tab_style(self):
-        for key, btn in self.tab_buttons.items():
-            is_active = key == self._current_tab
-            btn.setStyleSheet(TAB_STYLES["active" if is_active else "inactive"])
-
-    def _switch_tab(self, key):
+    def _switch_tab(self, key: str):
         self._current_tab = key
-        self._apply_tab_style()
         self._load_data()
 
     def _load_data(self):
         rentals = get_rentals_for_owner() or []
-        self._all_rentals = rentals
 
-        pending_count = sum(1 for r in rentals if r.get("status") == "pending")
-        self.tab_buttons["pending"].setText(f"Menunggu Konfirmasi ({pending_count})")
+        pending_count   = sum(1 for r in rentals if r.get("status") == "pending")
+        confirmed_count = sum(1 for r in rentals if r.get("status") == "confirmed")
+        rejected_count  = sum(1 for r in rentals if r.get("status") == "rejected")
+
+        self._tab_bar.set_count("pending",   pending_count)
+        self._tab_bar.set_count("confirmed", confirmed_count)
+        self._tab_bar.set_count("rejected",  rejected_count)
+
+        self._summary_pill.setText(f"{pending_count} menunggu tindakan")
         self.badge_updated.emit("pending", str(pending_count))
 
-        status_map = {
-            "pending": "pending",
-            "confirmed": "confirmed",
-            "rejected": "rejected",
-        }
-        target_status = status_map.get(self._current_tab, "pending")
-        filtered = [r for r in rentals if r.get("status") == target_status]
-
+        filtered = [r for r in rentals if r.get("status") == self._current_tab]
         self._render_cards(filtered)
 
-    def _render_cards(self, data):
-        while self.cards_container.count():
-            item = self.cards_container.takeAt(0)
+    def _render_cards(self, data: list):
+        # Hapus card lama
+        while self._cards_container.count():
+            item = self._cards_container.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
         if not data:
-            self.empty_label.setVisible(True)
-            msgs = {
-                "pending": "Tidak ada penyewaan yang menunggu konfirmasi.",
-                "confirmed": "Belum ada penyewaan yang dikonfirmasi.",
-                "rejected": "Tidak ada penyewaan yang ditolak.",
-            }
-            self.empty_label.setText(msgs.get(self._current_tab, ""))
+            self._cards_container.addWidget(EmptyState(self._current_tab))
             return
-
-        self.empty_label.setVisible(False)
 
         for r in data:
             card = RentalConfirmCard(r, self._current_tab)
             card.confirmed.connect(self._on_confirm)
             card.rejected.connect(self._on_reject)
-            self.cards_container.addWidget(card)
+            self._cards_container.addWidget(card)
 
-    def _on_confirm(self, rental_id):
+    def _on_confirm(self, rental_id: str):
         ok = confirm_rental(rental_id)
         if ok:
             self._load_data()
         else:
             QMessageBox.warning(self, "Gagal", "Gagal mengkonfirmasi penyewaan.")
 
-    def _on_reject(self, rental_id):
+    def _on_reject(self, rental_id: str):
         reply = QMessageBox.question(
-            self, "Konfirmasi", "Tolak penyewaan ini?",
+            self, "Konfirmasi Penolakan",
+            "Apakah Anda yakin ingin menolak penyewaan ini?",
             QMessageBox.Yes | QMessageBox.No
         )
         if reply == QMessageBox.Yes:
