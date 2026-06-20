@@ -477,7 +477,7 @@ class InventoryPage(QWidget):
         hv.setSectionResizeMode(2, QHeaderView.Fixed);  self.table.setColumnWidth(2, 140)
         hv.setSectionResizeMode(3, QHeaderView.Fixed);  self.table.setColumnWidth(3, 110)
         hv.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 110)
-        hv.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 130)
+        hv.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 160)
         hv.setSectionResizeMode(6, QHeaderView.Fixed);  self.table.setColumnWidth(6, 100)
 
         self.table.setSelectionMode(QTableWidget.NoSelection)
@@ -576,7 +576,7 @@ class InventoryPage(QWidget):
 
             # Col 1 — Nama
             ni = QTableWidgetItem(name)
-            ni.setTextAlignment(Qt.AlignVCenter | Qt.AlignLeft)
+            ni.setTextAlignment(Qt.AlignCenter)
             f  = ni.font(); f.setWeight(QFont.Weight.Bold); ni.setFont(f)
             self.table.setItem(row, 1, ni)
 
@@ -602,7 +602,7 @@ class InventoryPage(QWidget):
 
             # Col 5 — Status
             sw = QWidget(); sl2 = QHBoxLayout(sw)
-            sl2.setContentsMargins(8, 0, 8, 0); sl2.setAlignment(Qt.AlignCenter)
+            sl2.setContentsMargins(12, 0, 12, 0); sl2.setAlignment(Qt.AlignCenter)
             sl2.addWidget(StatusBadge(status))
             self.table.setCellWidget(row, 5, sw)
 

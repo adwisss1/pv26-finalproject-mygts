@@ -63,7 +63,7 @@ QMenu::item {
 }
 QMenu::item:selected {
     background: #E8F0EE;
-    color: #0F6E56;
+    color: #249c7e;
 }
 QMenu::separator {
     height: 0.5px;
@@ -71,7 +71,7 @@ QMenu::separator {
     margin: 4px 8px;
 }
 
-/* Table alternating row colors */
+/* Table alternating row colors */  
 QTableWidget::item:alternate {
     background: #FCFBFA;
 }
@@ -82,13 +82,73 @@ QComboBox QAbstractItemView {
     border: 0.5px solid #E0DDD8;
     border-radius: 8px;
     selection-background-color: #E8F0EE;
-    selection-color: #0F6E56;
+    selection-color: #3ab898;
     padding: 4px;
     outline: none;
 }
 
 /* DateEdit calendar popup */
 QDateEdit QCalendarWidget {
+    background: #ffffff;
     border: 0.5px solid #E0DDD8;
     border-radius: 8px;
+    color: #1A1A1A;
+}
+
+QDateEdit QCalendarWidget QWidget {
+    background: #ffffff;
+    color: #1A1A1A;
+}
+
+QDateEdit QCalendarWidget QToolButton {
+    background: transparent;
+    border: none;
+    color: #1A1A1A;
+    font-weight: bold;
+    min-width: 30px;
+    padding: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton:hover {
+    background: #E8F0EE;
+    border-radius: 4px;
+}
+
+QDateEdit QCalendarWidget QToolButton:pressed {
+    background: #D4E8E2;
+}
+
+QDateEdit QCalendarWidget QMenu {
+    background: #ffffff;
+    border: 0.5px solid #E0DDD8;
+    border-radius: 8px;
+}
+
+QDateEdit QCalendarWidget QMenu::item:selected {
+    background: #E8F0EE;
+    color: #0F6E56;
+}
+
+QDateEdit QCalendarWidget QSpinBox {
+    background: #ffffff;
+    border: 1px solid #D4D2CD;
+    border-radius: 4px;
+    color: #1A1A1A;
+    padding: 4px;
+}
+
+QDateEdit QCalendarWidget QAbstractItemView {
+    background: #ffffff;
+    border: none;
+    selection-background-color: #E8F0EE;
+    selection-color: #0F6E56;
+    color: #1A1A1A;
+}
+
+QDateEdit QCalendarWidget QHeaderView::section {
+    background: #F5F4F0;
+    border: none;
+    color: #2A2A2A;
+    padding: 4px;
+    font-weight: 600;
 }

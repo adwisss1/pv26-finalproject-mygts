@@ -11,9 +11,9 @@ Mengelola penyewaan inventaris (kostum, aksesoris, properti, alat musik, make up
 
 | Nama | NIM | Peran |
 |------|-----|-------|
-| Nama 1 | NIM1 | UI / View Layer |
-| Nama 2 | NIM2 | Logic / Controller |
-| Nama 3 | NIM3 | Database / Model |
+| Lalu MUhammad Farhan | F1D02310119 | UI / View Layer |
+| Baiq Adelia Dwi Savitri | F1D02310006 | Logic / Controller |
+| Syamsul Rijal | F1D02310025 | Database / Model |
 
 ---
 
@@ -97,6 +97,11 @@ python main.py
 ### 5. Login default (owner)
 - **Email:** owner@mygts.com
 - **Password:** owner123
+
+### Akun Customer
+- **Adelia** → adelia@mygts.com / password: customer123
+- **Aan** → aan@mygts.com / password: customer123
+- **Rijal** → rijal@mygts.com / password: customer123
 
 ---
 

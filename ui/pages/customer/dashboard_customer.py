@@ -8,8 +8,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 
 from controllers.inventory_controller import get_all_inventory
-from controllers.rental_controller import get_rentals_for_customer
+from controllers.rental_controller import get_rentals_for_customer, get_rentals_by_inventory
 from controllers.auth_controller import get_current_user
+from utils.worker import DataWorker
 
 
 CATEGORY_COLORS = {
@@ -190,10 +191,17 @@ class DashboardCustomer(QWidget):
 
     def __init__(self):
         super().__init__()
+        self._worker = None
         self._build_ui()
 
     def refresh(self):
-        self._load_data()
+        """Load data di background thread agar UI tidak freeze."""
+        self._set_loading(True)
+        self._worker = DataWorker(self._fetch_data)
+        self._worker.result.connect(self._on_data_loaded)
+        self._worker.error.connect(lambda e: self._set_loading(False))
+        self._worker.finished.connect(lambda: self._set_loading(False))
+        self._worker.start()
 
     def _build_ui(self):
         scroll = QScrollArea()
@@ -354,8 +362,20 @@ class DashboardCustomer(QWidget):
         except ValueError:
             return "active"
 
-    def _load_data(self):
-        user = get_current_user()
+    def _fetch_data(self):
+        """Dijalankan di background thread."""
+        user    = get_current_user()
+        items   = get_all_inventory() or []
+        rentals = get_rentals_for_customer(user["id"]) if user else []
+        return {"user": user, "items": items, "rentals": rentals}
+
+    def _on_data_loaded(self, data):
+        user    = data["user"]
+        items   = data["items"]
+        rentals = data["rentals"]
+        self._set_loading(False)
+        
+        # Update stats cards
         if user:
             self.welcome_label.setText(f"Selamat datang, {user['name']}")
 
@@ -366,11 +386,19 @@ class DashboardCustomer(QWidget):
             locale_date = now.strftime("%Y-%m-%d")
         self.date_label.setText(locale_date)
 
-        items = get_all_inventory() or []
-        total_stock = sum(item.get("stock", 0) for item in items)
-        self.card_tersedia.set_value(f"{total_stock:,}")
+        # Hitung inventaris yang tersedia (stock - active rentals)
+        available_count = 0
+        for item in items:
+            stock = item.get("stock", 0)
+            item_rentals = [r for r in get_rentals_by_inventory(item.get("id", "")) or [] 
+                           if r.get("status") in ("pending", "confirmed", "active")]
+            active_rentals = len(item_rentals)
+            available = max(0, stock - active_rentals)
+            if available > 0:
+                available_count += available
 
-        rentals = get_rentals_for_customer(user["id"]) if user else []
+        self.card_tersedia.set_value(available_count)
+
         active_count = sum(1 for r in rentals if r.get("status") in ("confirmed", "active"))
         pending_count = sum(1 for r in rentals if r.get("status") == "pending")
         self.card_disewa.set_value(active_count)
@@ -378,6 +406,10 @@ class DashboardCustomer(QWidget):
 
         self._populate_inventory_grid(items[:4])
         self._populate_rentals_table(rentals)
+
+    def _set_loading(self, loading: bool):
+        if hasattr(self, 'welcome_label'):
+            pass   # bisa tambah spinner di sini jika mau
 
     def _populate_inventory_grid(self, items):
         while self.grid_layout.count():

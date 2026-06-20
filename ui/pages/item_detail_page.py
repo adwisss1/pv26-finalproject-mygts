@@ -413,7 +413,7 @@ class ItemDetailPage(QWidget):
         if ok:
             self.refresh()
         else:
-            QMessageBox.warning(self, "Failed", "Failed to update condition.")
+            QMessageBox.warning(self, "Gagal", "Gagal mengubah kondisi item.")
 
     def _edit_item(self):
         if not self._current_item_id:
@@ -444,4 +444,4 @@ class ItemDetailPage(QWidget):
             if ok:
                 self.refresh()
             else:
-                QMessageBox.warning(self, "Failed", "Failed to update item.")
+                QMessageBox.warning(self, "Gagal", "Gagal mengupdate item.")

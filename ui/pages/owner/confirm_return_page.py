@@ -211,6 +211,8 @@ class ReturnConfirmCard(QFrame):
             "font-size: 12px; font-weight: 600; color: #1A1A1A; background: transparent;"
         )
         name_lbl.setWordWrap(True)
+        name_lbl.setMinimumWidth(110)
+        name_lbl.setMaximumWidth(120)
 
         role_pill = QLabel("Customer")
         role_pill.setAlignment(Qt.AlignCenter)
@@ -225,7 +227,7 @@ class ReturnConfirmCard(QFrame):
 
         av_w = QWidget()
         av_w.setLayout(av_col)
-        av_w.setFixedWidth(88)
+        av_w.setFixedWidth(130)
         av_w.setStyleSheet("background: transparent;")
         outer.addWidget(av_w)
 

@@ -194,6 +194,8 @@ class RentalConfirmCard(QFrame):
         name_lbl = QLabel(user.get("name", "-"))
         name_lbl.setAlignment(Qt.AlignCenter)
         name_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #1A1A1A; background: transparent;")
+        name_lbl.setWordWrap(True)
+        name_lbl.setMaximumWidth(106)
 
         role_badge = QLabel("Customer")
         role_badge.setAlignment(Qt.AlignCenter)
@@ -209,7 +211,7 @@ class RentalConfirmCard(QFrame):
 
         av_widget = QWidget()
         av_widget.setLayout(avatar_col)
-        av_widget.setFixedWidth(90)
+        av_widget.setFixedWidth(110)
         av_widget.setStyleSheet("background: transparent;")
         outer.addWidget(av_widget)
 

@@ -111,3 +111,39 @@ def get_current_user() -> dict | None:
 
 def is_owner() -> bool:
     return _current_user is not None and _current_user.get("role") == "owner"
+
+
+def add_customer(name: str, email: str, password: str, phone: str = "") -> tuple[bool, str]:
+    """
+    Owner menambahkan akun customer baru.
+    Return: (success: bool, message: str)
+    """
+    try:
+        # Validasi input
+        if not name or not name.strip():
+            return False, "Nama tidak boleh kosong"
+        
+        if not email or not email.strip():
+            return False, "Email tidak boleh kosong"
+        
+        if not password or not password.strip():
+            return False, "Password tidak boleh kosong"
+        
+        if len(password) < 6:
+            return False, "Password minimal 6 karakter"
+        
+        # Cek apakah email sudah terdaftar
+        try:
+            existing = UserModel.get_by_email(email)
+            if existing:
+                return False, "Email sudah terdaftar"
+        except Exception:
+            # Email belum ada, lanjut ke insert
+            pass
+        
+        # Buat customer baru
+        UserModel.create(name, email, hash_password(password), "customer", phone)
+        return True, f"Customer {name} berhasil ditambahkan"
+        
+    except Exception as e:
+        return False, f"Gagal menambahkan customer: {str(e)}"

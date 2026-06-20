@@ -277,7 +277,7 @@ class RentalPage(QWidget):
         content = QWidget(styleSheet="background: transparent;")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(28, 20, 28, 40)
-        layout.setSpacing(24)
+        layout.setSpacing(28)
 
         title = QLabel("Penyewaan Saya")
         title.setStyleSheet("font-size: 24px; font-weight: bold; color: #1A1A1A; letter-spacing: -0.5px;")
@@ -301,10 +301,11 @@ class RentalPage(QWidget):
 
         # STEP 1: FORM
         self.form_panel = QFrame()
-        self.form_panel.setFixedWidth(600)
+        self.form_panel.setFixedWidth(700)
         self.form_panel.setStyleSheet(panel_style)
         form_layout = QVBoxLayout(self.form_panel)
-        form_layout.setSpacing(20)
+        form_layout.setSpacing(18)
+        form_layout.setContentsMargins(32, 28, 32, 28)
 
         form_title = QLabel("Detail Penyewaan")
         form_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #1A1A1A; border: none;")
@@ -312,16 +313,16 @@ class RentalPage(QWidget):
 
         input_style = """
             QComboBox, QDateEdit, QTextEdit {
-                border: 1px solid #D4D2CD; border-radius: 8px; padding: 12px 14px; font-size: 14px; background: #ffffff;
+                border: 1px solid #D4D2CD; border-radius: 8px; padding: 12px 14px; font-size: 13px; background: #ffffff;
             }
             QComboBox:focus, QDateEdit:focus, QTextEdit:focus { border-color: #0F6E56; }
             QComboBox::drop-down { border: none; width: 30px; }
         """
-        lbl_style = "font-size: 13px; font-weight: bold; color: #6B6A66; border: none; padding-bottom: 4px;"
+        lbl_style = "font-size: 13px; font-weight: 600; color: #6B6A66; border: none;"
 
         def add_field(label_text, widget):
             lay = QVBoxLayout()
-            lay.setSpacing(2)
+            lay.setSpacing(6)
             lbl = QLabel(label_text, styleSheet=lbl_style)
             lay.addWidget(lbl)
             lay.addWidget(widget)
@@ -334,19 +335,21 @@ class RentalPage(QWidget):
         date_row = QHBoxLayout()
         date_row.setSpacing(16)
         
-        start_lay = QVBoxLayout(); start_lay.setSpacing(2)
+        start_lay = QVBoxLayout(); start_lay.setSpacing(6)
         start_lay.addWidget(QLabel("Tanggal Ambil", styleSheet=lbl_style))
         self.rental_start = QDateEdit(calendarPopup=True)
         self.rental_start.setDate(QDate.currentDate())
         self.rental_start.setMinimumDate(QDate.currentDate())
+        self.rental_start.setDisplayFormat("yyyy-MM-dd")
         self.rental_start.setStyleSheet(input_style)
         start_lay.addWidget(self.rental_start)
         
-        end_lay = QVBoxLayout(); end_lay.setSpacing(2)
+        end_lay = QVBoxLayout(); end_lay.setSpacing(6)
         end_lay.addWidget(QLabel("Tanggal Kembali", styleSheet=lbl_style))
         self.rental_end = QDateEdit(calendarPopup=True)
         self.rental_end.setDate(QDate.currentDate().addDays(1))
         self.rental_end.setMinimumDate(QDate.currentDate().addDays(1))
+        self.rental_end.setDisplayFormat("yyyy-MM-dd")
         self.rental_end.setStyleSheet(input_style)
         end_lay.addWidget(self.rental_end)
         
@@ -360,33 +363,39 @@ class RentalPage(QWidget):
         self.rental_notes.setStyleSheet(input_style)
         add_field("Catatan Tambahan (Opsional)", self.rental_notes)
 
-        form_layout.addSpacing(16)
+        form_layout.addSpacing(8)
         self.btn_next_step = QPushButton("Lanjut Upload Foto \u2192")
         self.btn_next_step.setCursor(Qt.PointingHandCursor)
-        self.btn_next_step.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; padding: 14px; font-size: 15px; font-weight: bold; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
+        self.btn_next_step.setFixedHeight(44)
+        self.btn_next_step.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
         self.btn_next_step.clicked.connect(self._go_to_step2)
         form_layout.addWidget(self.btn_next_step)
 
         # STEP 2: PHOTO UPLOAD
         self.photo_panel = QFrame()
-        self.photo_panel.setFixedWidth(600)
+        self.photo_panel.setFixedWidth(700)
         self.photo_panel.setStyleSheet(panel_style)
         photo_layout = QVBoxLayout(self.photo_panel)
-        photo_layout.setSpacing(20)
+        photo_layout.setSpacing(18)
+        photo_layout.setContentsMargins(32, 28, 32, 28)
 
         photo_layout.addWidget(QLabel("Upload Foto Pengambilan", styleSheet="font-size: 20px; font-weight: bold; color: #1A1A1A; border: none;"))
         self.pickup_upload = PhotoUploadZone(max_photos=5, banner_text="Foto wajib diunggah sebagai bukti kondisi barang saat diambil.")
         photo_layout.addWidget(self.pickup_upload)
 
         photo_btn_row = QHBoxLayout()
+        photo_btn_row.setSpacing(12)
+        
         self.btn_back_step = QPushButton("\u2190 Kembali")
         self.btn_back_step.setCursor(Qt.PointingHandCursor)
-        self.btn_back_step.setStyleSheet("QPushButton { background: transparent; border: 1px solid #D4D2CD; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: bold; color: #6B6A66; } QPushButton:hover { background: #EDECE8; }")
+        self.btn_back_step.setFixedHeight(44)
+        self.btn_back_step.setStyleSheet("QPushButton { background: #ffffff; border: 1px solid #D4D2CD; border-radius: 8px; font-size: 14px; font-weight: 600; color: #6B6A66; } QPushButton:hover { background: #F0EFEB; }")
         self.btn_back_step.clicked.connect(self._go_to_step1)
         
         self.btn_confirm_step = QPushButton("Lanjut Konfirmasi \u2192")
         self.btn_confirm_step.setCursor(Qt.PointingHandCursor)
-        self.btn_confirm_step.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: bold; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
+        self.btn_confirm_step.setFixedHeight(44)
+        self.btn_confirm_step.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
         self.btn_confirm_step.clicked.connect(self._go_to_step3)
         
         photo_btn_row.addWidget(self.btn_back_step)
@@ -394,17 +403,18 @@ class RentalPage(QWidget):
         photo_btn_row.addWidget(self.btn_confirm_step)
         photo_layout.addLayout(photo_btn_row)
 
-        # STEP 3: CONFIRMATION (Gaya Nota/Struk)
+        # STEP 3: CONFIRMATION
         self.confirm_panel = QFrame()
-        self.confirm_panel.setFixedWidth(600)
+        self.confirm_panel.setFixedWidth(700)
         self.confirm_panel.setStyleSheet(panel_style)
         conf_layout = QVBoxLayout(self.confirm_panel)
-        conf_layout.setSpacing(20)
+        conf_layout.setSpacing(18)
+        conf_layout.setContentsMargins(32, 28, 32, 28)
 
-        conf_layout.addWidget(QLabel("Konfirmasi Penyewaan", styleSheet="font-size: 20px; font-weight: bold; color: #1A1A1A; border: none; text-align: center;", alignment=Qt.AlignCenter))
-        conf_layout.addWidget(QLabel("Mohon periksa kembali detail pesanan Anda sebelum diajukan.", styleSheet="font-size: 13px; color: #6B6A66; border: none;", alignment=Qt.AlignCenter))
+        conf_layout.addWidget(QLabel("Konfirmasi Penyewaan", styleSheet="font-size: 20px; font-weight: bold; color: #1A1A1A; border: none;", alignment=Qt.AlignCenter))
+        conf_layout.addWidget(QLabel("Mohon periksa kembali detail pesanan Anda sebelum diajukan.", styleSheet="font-size: 13px; color: #8C8A86; border: none;", alignment=Qt.AlignCenter))
 
-        self.confirm_detail_widget = QFrame(styleSheet="background: #FAFAF9; border: 1.5px dashed #D4D2CD; border-radius: 12px; padding: 16px;")
+        self.confirm_detail_widget = QFrame(styleSheet="background: #FAFAF9; border: 1.5px dashed #D4D2CD; border-radius: 12px; padding: 20px;")
         cd_layout = QVBoxLayout(self.confirm_detail_widget)
         cd_layout.setSpacing(12)
         
@@ -412,9 +422,9 @@ class RentalPage(QWidget):
         for key in ["Barang", "Tanggal Ambil", "Tanggal Kembali", "Catatan"]:
             row = QHBoxLayout()
             k = QLabel(f"{key}")
-            k.setStyleSheet("font-size: 13px; font-weight: bold; color: #8C8A86; border: none;")
+            k.setStyleSheet("font-size: 13px; font-weight: 600; color: #8C8A86; border: none;")
             v = QLabel("-")
-            v.setStyleSheet("font-size: 14px; font-weight: bold; color: #1A1A1A; border: none;")
+            v.setStyleSheet("font-size: 13px; font-weight: 600; color: #1A1A1A; border: none;")
             v.setAlignment(Qt.AlignRight)
             row.addWidget(k); row.addWidget(v, 1)
             cd_layout.addLayout(row)
@@ -424,9 +434,9 @@ class RentalPage(QWidget):
         
         total_row = QHBoxLayout()
         total_lbl = QLabel("Total Biaya")
-        total_lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #1A1A1A; border: none;")
+        total_lbl.setStyleSheet("font-size: 16px; font-weight: 600; color: #1A1A1A; border: none;")
         self.confirm_labels["Total Harga"] = QLabel("Rp 0")
-        self.confirm_labels["Total Harga"].setStyleSheet("font-size: 20px; font-weight: bold; color: #0F6E56; border: none;")
+        self.confirm_labels["Total Harga"].setStyleSheet("font-size: 18px; font-weight: 700; color: #0F6E56; border: none;")
         self.confirm_labels["Total Harga"].setAlignment(Qt.AlignRight)
         total_row.addWidget(total_lbl); total_row.addWidget(self.confirm_labels["Total Harga"])
         cd_layout.addLayout(total_row)
@@ -434,14 +444,18 @@ class RentalPage(QWidget):
         conf_layout.addWidget(self.confirm_detail_widget)
 
         conf_btn_row = QHBoxLayout()
+        conf_btn_row.setSpacing(12)
+        
         self.btn_back_photo = QPushButton("\u2190 Edit Foto")
         self.btn_back_photo.setCursor(Qt.PointingHandCursor)
-        self.btn_back_photo.setStyleSheet(self.btn_back_step.styleSheet())
+        self.btn_back_photo.setFixedHeight(44)
+        self.btn_back_photo.setStyleSheet("QPushButton { background: #ffffff; border: 1px solid #D4D2CD; border-radius: 8px; font-size: 14px; font-weight: 600; color: #6B6A66; } QPushButton:hover { background: #F0EFEB; }")
         self.btn_back_photo.clicked.connect(self._go_to_step2)
 
         self.btn_submit = QPushButton("\u2713 Ajukan Penyewaan")
         self.btn_submit.setCursor(Qt.PointingHandCursor)
-        self.btn_submit.setStyleSheet(self.btn_confirm_step.styleSheet())
+        self.btn_submit.setFixedHeight(44)
+        self.btn_submit.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
         self.btn_submit.clicked.connect(self._create_rental)
 
         conf_btn_row.addWidget(self.btn_back_photo)
@@ -503,6 +517,8 @@ class RentalPage(QWidget):
         self._rental_step = step
         self.step_indicator._current_step = step
         self.step_indicator._build()
+        self.step_indicator.update()  # Force repaint
+        self.step_indicator.repaint()
 
         is_customer = not is_owner()
         self.customer_container.setVisible(is_customer)

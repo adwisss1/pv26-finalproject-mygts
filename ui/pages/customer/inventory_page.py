@@ -1,3 +1,6 @@
+import base64
+import urllib.request
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QFrame, QScrollArea, QGridLayout, QSizePolicy
@@ -7,6 +10,40 @@ from PySide6.QtGui import QPixmap, QFont, QColor
 
 from controllers.inventory_controller import CATEGORIES, get_all_inventory, search_inventory
 from controllers.rental_controller import get_rentals_by_inventory
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  LOAD QPixmap dari URL / base64 / path lokal
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _load_pixmap(source: str, size: int = 160) -> QPixmap | None:
+    if not source:
+        return None
+    try:
+        pixmap = QPixmap()
+        if source.startswith("http://") or source.startswith("https://"):
+            req  = urllib.request.Request(source, headers={"User-Agent": "Mozilla/5.0"})
+            data = urllib.request.urlopen(req, timeout=5).read()
+            pixmap.loadFromData(data)
+        elif source.startswith("data:image"):
+            b64 = source.split(",", 1)[1]
+            pixmap.loadFromData(base64.b64decode(b64))
+        else:
+            try:
+                pixmap.loadFromData(base64.b64decode(source))
+            except Exception:
+                pixmap = QPixmap(source)
+
+        if pixmap.isNull():
+            return None
+        scaled = pixmap.scaled(size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        # crop tengah
+        if scaled.width() > size or scaled.height() > size:
+            x = (scaled.width()  - size) // 2
+            y = (scaled.height() - size) // 2
+            scaled = scaled.copy(x, y, size, size)
+        return scaled
+    except Exception:
+        return None
 
 CATEGORY_PILL_COLORS = {
     "Kostum": ("#E8F0EE", "#0F6E56"),
@@ -60,16 +97,16 @@ class ItemCard(QFrame):
         layout.setSpacing(10)
 
         # --- 1. Area Gambar ---
-        img_path = item.get("image", "")
+        img_url = item.get("image_url", "")
         img_lbl = QLabel()
         img_lbl.setFixedSize(210, 160)
         img_lbl.setAlignment(Qt.AlignCenter)
         img_lbl.setStyleSheet("background: #F8F7F4; border-radius: 8px; border: none;")
         
-        if img_path:
-            pix = QPixmap(img_path)
-            if not pix.isNull():
-                img_lbl.setPixmap(pix.scaled(210, 160, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        if img_url:
+            pix = _load_pixmap(img_url, 160)
+            if pix:
+                img_lbl.setPixmap(pix)
             else:
                 img_lbl.setText("\U0001f4f7")
                 img_lbl.setStyleSheet("font-size: 32px; color: #D4D2CD; background: #F8F7F4; border-radius: 8px; border: none;")

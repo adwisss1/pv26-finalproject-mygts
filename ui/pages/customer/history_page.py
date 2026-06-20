@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt, QDate, Signal
 from PySide6.QtGui import QFont, QColor
 
 from controllers.rental_controller import get_rentals_for_owner, get_rentals_for_customer
+from utils.worker import DataWorker
 from controllers.inventory_controller import CATEGORIES
 from controllers.auth_controller import get_current_user, is_owner
 from utils.export import export_csv, export_pdf
@@ -193,6 +194,7 @@ class HistoryPage(QWidget):
         self._all_data = []
         self._current_page = 0
         self._page_size = 10
+        self._worker = None
         self._build_ui()
 
     def refresh(self):
@@ -256,49 +258,59 @@ class HistoryPage(QWidget):
 
         ol.addLayout(header)
 
-        # Filter Box
-        fc = QFrame(styleSheet="background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px; padding: 16px 20px;")
-        fl = QHBoxLayout(fc)
-        fl.setSpacing(12)
+        # Filter Box — 2 baris agar tidak terpotong
+        fc = QFrame()
+        fc.setStyleSheet("QFrame { background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px; }")
+        fc_main = QVBoxLayout(fc)
+        fc_main.setContentsMargins(20, 16, 20, 16)
+        fc_main.setSpacing(10)
 
         fs = """
-            QComboBox, QDateEdit { border: 1px solid #D4D2CD; border-radius: 8px; padding: 10px 12px; font-size: 13px; background: #ffffff; }
+            QComboBox, QDateEdit { border: 1px solid #D4D2CD; border-radius: 8px; padding: 8px 12px; font-size: 13px; background: #ffffff; min-width: 130px; }
             QComboBox:focus, QDateEdit:focus { border-color: #0F6E56; }
             QComboBox::drop-down { border: none; width: 30px; }
         """
+        lbl_style = "font-size: 13px; font-weight: 500; color: #6B6A66;"
 
-        fl.addWidget(QLabel("Dari:", styleSheet="font-size: 13px; font-weight: 500;"))
+        # Baris 1: Rentang Tanggal
+        row1 = QHBoxLayout()
+        row1.setSpacing(10)
+        row1.addWidget(QLabel("Dari:", styleSheet=lbl_style))
         self.odf = QDateEdit(calendarPopup=True)
-        self.odf.setDate(QDate.currentDate().addMonths(-3))
+        self.odf.setDate(QDate.currentDate().addYears(-2))
         self.odf.setDisplayFormat("yyyy-MM-dd")
         self.odf.setStyleSheet(fs)
-        fl.addWidget(self.odf)
-
-        fl.addWidget(QLabel("s/d", styleSheet="font-size: 13px; font-weight: 500;"))
+        row1.addWidget(self.odf)
+        row1.addWidget(QLabel("s/d", styleSheet=lbl_style))
         self.odt = QDateEdit(calendarPopup=True)
         self.odt.setDate(QDate.currentDate())
         self.odt.setDisplayFormat("yyyy-MM-dd")
         self.odt.setStyleSheet(fs)
-        fl.addWidget(self.odt)
+        row1.addWidget(self.odt)
+        row1.addStretch()
+        fc_main.addLayout(row1)
 
-        fl.addWidget(QLabel(" Kategori:", styleSheet="font-size: 13px; font-weight: 500;"))
+        # Baris 2: Filter Kategori + Status + Tombol
+        row2 = QHBoxLayout()
+        row2.setSpacing(10)
+        row2.addWidget(QLabel("Kategori:", styleSheet=lbl_style))
         self.okf = QComboBox()
         self.okf.addItems(["Semua Kategori"] + CATEGORIES)
         self.okf.setStyleSheet(fs)
-        fl.addWidget(self.okf)
-
-        fl.addWidget(QLabel(" Status:", styleSheet="font-size: 13px; font-weight: 500;"))
+        row2.addWidget(self.okf)
+        row2.addWidget(QLabel("Status:", styleSheet=lbl_style))
         self.osf = QComboBox()
         self.osf.addItems(["Semua Status", "Selesai", "Aktif", "Terlambat", "Dibatalkan"])
         self.osf.setStyleSheet(fs)
-        fl.addWidget(self.osf)
-
-        btn = QPushButton("Terapkan")
+        row2.addWidget(self.osf)
+        row2.addStretch()
+        btn = QPushButton("Terapkan Filter")
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; padding: 10px 24px; font-size: 13px; font-weight: bold; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
+        btn.setFixedHeight(38)
+        btn.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; padding: 0 24px; font-size: 13px; font-weight: bold; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
         btn.clicked.connect(self._load_data)
-        fl.addWidget(btn)
-        fl.addStretch()
+        row2.addWidget(btn)
+        fc_main.addLayout(row2)
         ol.addWidget(fc)
 
         # Summary Cards
@@ -371,42 +383,54 @@ class HistoryPage(QWidget):
         self.oempty.setVisible(False)
 
     def _build_customer_section(self, cl):
-        # Judul dihapus agar tidak double
-        fc = QFrame(styleSheet="background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px; padding: 16px 20px;")
-        fl = QHBoxLayout(fc)
-        fl.setSpacing(12)
-        
-        fs = """
-            QComboBox, QDateEdit { border: 1px solid #D4D2CD; border-radius: 8px; padding: 10px 12px; font-size: 13px; background: #ffffff; }
-            QComboBox:focus, QDateEdit:focus { border-color: #0F6E56; }
-        """
+        # Filter Box — 2 baris agar tidak terpotong
+        fc = QFrame()
+        fc.setStyleSheet("QFrame { background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px; }")
+        fc_main = QVBoxLayout(fc)
+        fc_main.setContentsMargins(20, 16, 20, 16)
+        fc_main.setSpacing(10)
 
-        fl.addWidget(QLabel("Dari:", styleSheet="font-size: 13px; font-weight: 500;"))
+        fs = """
+            QComboBox, QDateEdit { border: 1px solid #D4D2CD; border-radius: 8px; padding: 8px 12px; font-size: 13px; background: #ffffff; min-width: 130px; }
+            QComboBox:focus, QDateEdit:focus { border-color: #0F6E56; }
+            QComboBox::drop-down { border: none; width: 30px; }
+        """
+        lbl_style = "font-size: 13px; font-weight: 500; color: #6B6A66;"
+
+        # Baris 1: Rentang Tanggal
+        row1 = QHBoxLayout()
+        row1.setSpacing(10)
+        row1.addWidget(QLabel("Dari:", styleSheet=lbl_style))
         self.cdf = QDateEdit(calendarPopup=True)
-        self.cdf.setDate(QDate.currentDate().addMonths(-3))
+        self.cdf.setDate(QDate.currentDate().addYears(-2))
         self.cdf.setDisplayFormat("yyyy-MM-dd")
         self.cdf.setStyleSheet(fs)
-        fl.addWidget(self.cdf)
-        
-        fl.addWidget(QLabel("s/d", styleSheet="font-size: 13px; font-weight: 500;"))
+        row1.addWidget(self.cdf)
+        row1.addWidget(QLabel("s/d", styleSheet=lbl_style))
         self.cdt = QDateEdit(calendarPopup=True)
         self.cdt.setDate(QDate.currentDate())
         self.cdt.setDisplayFormat("yyyy-MM-dd")
         self.cdt.setStyleSheet(fs)
-        fl.addWidget(self.cdt)
-        
-        fl.addWidget(QLabel(" Status:", styleSheet="font-size: 13px; font-weight: 500;"))
+        row1.addWidget(self.cdt)
+        row1.addStretch()
+        fc_main.addLayout(row1)
+
+        # Baris 2: Status + Tombol Terapkan
+        row2 = QHBoxLayout()
+        row2.setSpacing(10)
+        row2.addWidget(QLabel("Status:", styleSheet=lbl_style))
         self.csf = QComboBox()
         self.csf.addItems(["Semua", "Aktif", "Selesai", "Terlambat"])
         self.csf.setStyleSheet(fs)
-        fl.addWidget(self.csf)
-
+        row2.addWidget(self.csf)
+        row2.addStretch()
         btn = QPushButton("Terapkan")
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; padding: 10px 24px; font-size: 13px; font-weight: bold; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
+        btn.setFixedHeight(38)
+        btn.setStyleSheet("QPushButton { background: #0F6E56; border: none; border-radius: 8px; padding: 0 24px; font-size: 13px; font-weight: bold; color: #ffffff; } QPushButton:hover { background: #0A5A45; }")
         btn.clicked.connect(self._load_data)
-        fl.addWidget(btn)
-        fl.addStretch()
+        row2.addWidget(btn)
+        fc_main.addLayout(row2)
         cl.addWidget(fc)
 
         self.list_container = QVBoxLayout()
@@ -433,16 +457,39 @@ class HistoryPage(QWidget):
 
     def _load_data(self, data=None):
         user = get_current_user()
-        if not user: return
+        if not user:
+            return
 
-        is_owner_view = is_owner()
-        self.owner_section.setVisible(is_owner_view)
-        self.customer_section.setVisible(not is_owner_view)
+        self._is_owner_view = is_owner()
+        self.owner_section.setVisible(self._is_owner_view)
+        self.customer_section.setVisible(not self._is_owner_view)
 
-        rentals = (get_rentals_for_owner() if is_owner_view else get_rentals_for_customer(user["id"])) or []
+        # Tampilkan indikator loading
+        self._set_loading(True)
 
-        if is_owner_view: self._load_owner(rentals)
-        else: self._load_customer(rentals)
+        uid = user["id"]
+        fetch_fn = get_rentals_for_owner if self._is_owner_view else lambda: get_rentals_for_customer(uid)
+
+        self._worker = DataWorker(fetch_fn)
+        self._worker.result.connect(self._on_rentals_loaded)
+        self._worker.error.connect(lambda e: self._set_loading(False))
+        self._worker.finished.connect(lambda: self._set_loading(False))
+        self._worker.start()
+
+    def _on_rentals_loaded(self, rentals):
+        rentals = rentals or []
+        if self._is_owner_view:
+            self._load_owner(rentals)
+        else:
+            self._load_customer(rentals)
+
+    def _set_loading(self, loading: bool):
+        # Tampilkan/sembunyikan tabel sementara loading
+        if hasattr(self, "otable"):
+            if loading:
+                self.otable.setEnabled(False)
+            else:
+                self.otable.setEnabled(True)
 
     def _load_owner(self, rentals):
         raw = list(rentals)
