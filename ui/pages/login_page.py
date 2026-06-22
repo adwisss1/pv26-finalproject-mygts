@@ -12,7 +12,7 @@ class LoginPage(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setStyleSheet("background: #F8F7F4;")
+        self.setObjectName("loginPage")
         self._build_ui()
 
     def _build_ui(self):
@@ -22,33 +22,44 @@ class LoginPage(QWidget):
         card = QFrame()
         card.setObjectName("loginCard")
         card.setFixedWidth(420)
-        card.setStyleSheet("""
-            #loginCard {
-                background: #ffffff;
-                border: 0.5px solid #E0DDD8;
-                border-radius: 16px;
-            }
-        """)
         layout = QVBoxLayout(card)
         layout.setContentsMargins(32, 32, 32, 32)
         layout.setSpacing(0)
+        
+        # Force primary button styling on card (cascade to children)
+        card.setStyleSheet("""
+            QFrame#loginCard QPushButton#primary {
+                background: #0F6E56;
+                color: #ffffff;
+                border: none;
+                padding: 12px 16px;
+                font-size: 14px;
+                font-weight: 600;
+                border-radius: 8px;
+                min-height: 40px;
+            }
+            QFrame#loginCard QPushButton#primary:hover {
+                background: #0A5A45;
+            }
+            QFrame#loginCard QPushButton#primary:pressed {
+                background: #08463a;
+            }
+        """)
 
         logo = QFrame()
         logo.setFixedSize(56, 56)
-        logo.setStyleSheet("""
-            background: #0F6E56; border-radius: 28px;
-        """)
+        logo.setObjectName("loginLogo")
         logo_layout = QVBoxLayout(logo)
         logo_layout.setAlignment(Qt.AlignCenter)
         logo_icon = QLabel("M")
-        logo_icon.setStyleSheet("font-size: 24px; font-weight: 700; color: #ffffff; background: transparent;")
+        logo_icon.setObjectName("logoIcon")
         logo_layout.addWidget(logo_icon)
 
         layout.addWidget(logo, 0, Qt.AlignCenter)
         layout.addSpacing(12)
 
         title = QLabel("MyGTS")
-        title.setStyleSheet("font-size: 22px; font-weight: 700; color: #1A1A1A; letter-spacing: -0.5px;")
+        title.setObjectName("loginTitle")
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
@@ -56,7 +67,7 @@ class LoginPage(QWidget):
 
         subtitle = QLabel("Sistem Manajemen Inventaris Sanggar")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 13px; color: #8C8A86;")
+        subtitle.setObjectName("loginSubtitle")
         layout.addWidget(subtitle)
 
         layout.addSpacing(28)
@@ -65,25 +76,12 @@ class LoginPage(QWidget):
         email_group = QVBoxLayout()
         email_group.setSpacing(6)
         lbl_email = QLabel("Email")
-        lbl_email.setStyleSheet("font-size: 14px; font-weight: 500; color: #1A1A1A;")
+        lbl_email.setObjectName("formLabel")
         email_group.addWidget(lbl_email)
 
         self.login_email = QLineEdit()
         self.login_email.setPlaceholderText("nama@email.com")
-        self.login_email.setStyleSheet("""
-            QLineEdit {
-                border: 0.5px solid #D4D2CD; border-radius: 8px;
-                padding: 10px 12px; font-size: 14px;
-                background: #ffffff; color: #1A1A1A;
-                min-height: 22px;
-            }
-            QLineEdit:focus {
-                border-color: #0F6E56;
-            }
-            QLineEdit::placeholder {
-                color: #A8A6A2;
-            }
-        """)
+        self.login_email.setObjectName("input")
         email_group.addWidget(self.login_email)
         layout.addLayout(email_group)
 
@@ -93,26 +91,13 @@ class LoginPage(QWidget):
         pw_group = QVBoxLayout()
         pw_group.setSpacing(6)
         lbl_password = QLabel("Kata Sandi")
-        lbl_password.setStyleSheet("font-size: 14px; font-weight: 500; color: #1A1A1A;")
+        lbl_password.setObjectName("formLabel")
         pw_group.addWidget(lbl_password)
 
         self.login_password = QLineEdit()
         self.login_password.setPlaceholderText("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022")
         self.login_password.setEchoMode(QLineEdit.Password)
-        self.login_password.setStyleSheet("""
-            QLineEdit {
-                border: 0.5px solid #D4D2CD; border-radius: 8px;
-                padding: 10px 12px; font-size: 14px;
-                background: #ffffff; color: #1A1A1A;
-                min-height: 22px;
-            }
-            QLineEdit:focus {
-                border-color: #0F6E56;
-            }
-            QLineEdit::placeholder {
-                color: #A8A6A2;
-            }
-        """)
+        self.login_password.setObjectName("input")
         
         # Kata sandi sekarang masuk langsung ke grup vertikal (sejajar dengan email)
         pw_group.addWidget(self.login_password)
@@ -121,15 +106,7 @@ class LoginPage(QWidget):
         layout.addSpacing(24)
 
         btn_login = QPushButton("Masuk")
-        btn_login.setStyleSheet("""
-            QPushButton {
-                background: #0F6E56; border: none; border-radius: 8px;
-                padding: 12px; font-size: 14px; font-weight: 600;
-                color: #ffffff; min-height: 22px;
-            }
-            QPushButton:hover { background: #0A5A45; }
-            QPushButton:pressed { background: #08503A; }
-        """)
+        btn_login.setObjectName("primary")
         btn_login.clicked.connect(self._handle_login)
         layout.addWidget(btn_login)
 
@@ -137,7 +114,7 @@ class LoginPage(QWidget):
 
         footnote = QLabel("Belum punya akun? Hubungi pemilik sanggar.")
         footnote.setAlignment(Qt.AlignCenter)
-        footnote.setStyleSheet("font-size: 12px; color: #A8A6A2;")
+        footnote.setObjectName("muted")
         layout.addWidget(footnote)
 
         outer.addStretch()

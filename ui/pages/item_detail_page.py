@@ -4,8 +4,10 @@ from PySide6.QtWidgets import (
     QScrollArea, QMessageBox, QGridLayout, QDialog
 )
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap
 
 from controllers.inventory_controller import get_inventory_by_id, update_inventory, CATEGORIES
+from ui.pages.customer.inventory_page import _load_pixmap
 from controllers.rental_controller import get_rentals_by_inventory
 from controllers.auth_controller import is_owner
 
@@ -27,13 +29,13 @@ class SpecRow(QWidget):
         left = QVBoxLayout()
         left.setSpacing(2)
         lbl_label = QLabel(label)
-        lbl_label.setStyleSheet("font-size: 12px; color: #8C8A86; background: transparent;")
+        lbl_label.setObjectName("formLabel")
         value_style = "font-size: 14px; font-weight: 500; color: #1A1A1A;"
         if icon_char:
             self.value_label = QLabel(f"{icon_char}  {value}")
         else:
             self.value_label = QLabel(value)
-        self.value_label.setStyleSheet(value_style + "background: transparent;")
+        self.value_label.setObjectName("itemValue")
 
         left.addWidget(lbl_label)
         left.addWidget(self.value_label)
@@ -46,28 +48,26 @@ class SpecRow(QWidget):
 class HistoryItem(QFrame):
     def __init__(self, icon_char, title, subtitle, note=""):
         super().__init__()
-        self.setStyleSheet("""
-            background: transparent;
-        """)
+        self.setObjectName("historyItem")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 8, 0, 8)
         layout.setSpacing(12)
 
         icon_frame = QFrame()
         icon_frame.setFixedSize(36, 36)
-        icon_frame.setStyleSheet("background: #F8F7F4; border-radius: 18px;")
+        icon_frame.setObjectName("iconFrameSmall")
         il = QVBoxLayout(icon_frame)
         il.setAlignment(Qt.AlignCenter)
         icon_lbl = QLabel(icon_char)
-        icon_lbl.setStyleSheet("font-size: 14px; color: #0F6E56; background: transparent;")
+        icon_lbl.setObjectName("iconSmall")
         il.addWidget(icon_lbl)
 
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
         t1 = QLabel(title)
-        t1.setStyleSheet("font-size: 13px; font-weight: 500; color: #1A1A1A; background: transparent;")
+        t1.setObjectName("historyTitle")
         t2 = QLabel(subtitle)
-        t2.setStyleSheet("font-size: 11px; color: #8C8A86; background: transparent;")
+        t2.setObjectName("historySubtitle")
         text_col.addWidget(t1)
         text_col.addWidget(t2)
 
@@ -98,10 +98,10 @@ class ItemDetailPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setObjectName("transparentScroll")
 
         content = QWidget()
-        content.setStyleSheet("background: transparent;")
+        content.setObjectName("transparentContent")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(24)
@@ -112,22 +112,16 @@ class ItemDetailPage(QWidget):
         breadcrumb = QHBoxLayout()
         breadcrumb.setSpacing(8)
 
-        self.btn_back = QPushButton("\u2190  Back to Inventory")
-        self.btn_back.setStyleSheet("""
-            QPushButton {
-                background: transparent; border: none;
-                font-size: 13px; color: #8C8A86; padding: 4px 0;
-            }
-            QPushButton:hover { color: #0F6E56; }
-        """)
-        self.btn_back.clicked.connect(lambda: self.navigate_to.emit("inventory"))
+        self.btn_back = QPushButton("\u2190  Back to History")
+        self.btn_back.setObjectName("link")
+        self.btn_back.clicked.connect(lambda: self.navigate_to.emit("history"))
 
         self.bc_category = QLabel()
-        self.bc_category.setStyleSheet("font-size: 13px; color: #8C8A86;")
+        self.bc_category.setObjectName("muted")
         sep1 = QLabel("/")
-        sep1.setStyleSheet("font-size: 13px; color: #8C8A86;")
+        sep1.setObjectName("muted")
         self.bc_name = QLabel()
-        self.bc_name.setStyleSheet("font-size: 13px; font-weight: 500; color: #1A1A1A;")
+        self.bc_name.setObjectName("itemTitle")
 
         breadcrumb.addWidget(self.btn_back)
         breadcrumb.addWidget(sep1)
@@ -135,24 +129,11 @@ class ItemDetailPage(QWidget):
         breadcrumb.addStretch()
 
         self.btn_maintenance = QPushButton("Set Maintenance")
-        self.btn_maintenance.setStyleSheet("""
-            QPushButton {
-                background: #ffffff; border: 0.5px solid #0F6E56;
-                border-radius: 8px; padding: 10px 20px;
-                font-size: 13px; font-weight: 500; color: #0F6E56;
-            }
-            QPushButton:hover { background: #F8F7F4; }
-        """)
+        self.btn_maintenance.setObjectName("outline")
         self.btn_maintenance.clicked.connect(self._toggle_maintenance)
 
         self.btn_edit = QPushButton("Edit")
-        self.btn_edit.setStyleSheet("""
-            QPushButton {
-                background: #0F6E56; border: none; border-radius: 8px;
-                padding: 10px 20px; font-size: 13px; font-weight: 600; color: #ffffff;
-            }
-            QPushButton:hover { background: #0A5A45; }
-        """)
+        self.btn_edit.setObjectName("primary")
         self.btn_edit.clicked.connect(self._edit_item)
 
         header_row.addLayout(breadcrumb)
@@ -170,21 +151,12 @@ class ItemDetailPage(QWidget):
         self.image_card = QFrame()
         self.image_card.setObjectName("imageCard")
         self.image_card.setMinimumHeight(320)
-        self.image_card.setStyleSheet("""
-            #imageCard {
-                background: #EDECE8; border: 0.5px solid #E0DDD8;
-                border-radius: 12px;
-            }
-        """)
         img_layout = QVBoxLayout(self.image_card)
         img_layout.setAlignment(Qt.AlignCenter)
         self.img_placeholder = QLabel("\u2610")
-        self.img_placeholder.setStyleSheet("font-size: 64px; color: #A8A6A2; background: transparent;")
+        self.img_placeholder.setObjectName("imgPlaceholder")
         self.img_status_badge = QLabel()
-        self.img_status_badge.setStyleSheet("""
-            background: #E8F7F2; color: #1D9E75; font-size: 12px;
-            font-weight: 500; padding: 6px 14px; border-radius: 8px;
-        """)
+        self.img_status_badge.setObjectName("imgStatusBadge")
         img_layout.addWidget(self.img_placeholder)
 
         status_row = QHBoxLayout()
@@ -194,21 +166,24 @@ class ItemDetailPage(QWidget):
 
         left_col.addWidget(self.image_card)
 
-        thumb_row = QHBoxLayout()
+        # Thumbnail container (hidden if only 1 image)
+        self.thumb_container = QWidget()
+        thumb_row = QHBoxLayout(self.thumb_container)
         thumb_row.setSpacing(8)
         for color in ["#EDECE8", "#F0EFEA", "#F3F2EE"]:
             thumb = QFrame()
             thumb.setFixedSize(72, 72)
-            thumb.setStyleSheet(f"background: {color}; border: 0.5px solid #E0DDD8; border-radius: 8px;")
+            thumb.setObjectName("thumb")
             tl = QVBoxLayout(thumb)
             tl.setAlignment(Qt.AlignCenter)
-            ti = QLabel("\u2610")
-            ti.setStyleSheet("font-size: 20px; color: #A8A6A2; background: transparent;")
+            ti = QLabel("☐")
+            ti.setObjectName("thumbIcon")
             tl.addWidget(ti)
             thumb_row.addWidget(thumb)
 
         thumb_row.addStretch()
-        left_col.addLayout(thumb_row)
+        left_col.addWidget(self.thumb_container)
+        left_col.addStretch()
 
         left_widget = QWidget()
         left_widget.setLayout(left_col)
@@ -218,12 +193,6 @@ class ItemDetailPage(QWidget):
 
         self.info_card = QFrame()
         self.info_card.setObjectName("infoCard")
-        self.info_card.setStyleSheet("""
-            #infoCard {
-                background: #ffffff; border: 0.5px solid #E0DDD8;
-                border-radius: 12px; padding: 24px;
-            }
-        """)
         info_layout = QVBoxLayout(self.info_card)
         info_layout.setSpacing(16)
 
@@ -231,18 +200,18 @@ class ItemDetailPage(QWidget):
         name_col = QVBoxLayout()
         name_col.setSpacing(4)
         self.detail_name = QLabel()
-        self.detail_name.setStyleSheet("font-size: 22px; font-weight: 600; color: #1A1A1A;")
+        self.detail_name.setObjectName("detailName")
         self.detail_sku = QLabel()
-        self.detail_sku.setStyleSheet("font-size: 13px; color: #8C8A86;")
+        self.detail_sku.setObjectName("muted")
         name_col.addWidget(self.detail_name)
         name_col.addWidget(self.detail_sku)
 
         price_col = QVBoxLayout()
         price_col.setAlignment(Qt.AlignRight)
         self.detail_price = QLabel()
-        self.detail_price.setStyleSheet("font-size: 22px; font-weight: 700; color: #0F6E56;")
+        self.detail_price.setObjectName("detailPrice")
         self.detail_price_per = QLabel("per day")
-        self.detail_price_per.setStyleSheet("font-size: 12px; color: #8C8A86;")
+        self.detail_price_per.setObjectName("muted")
         price_col.addWidget(self.detail_price)
         price_col.addWidget(self.detail_price_per)
 
@@ -253,14 +222,14 @@ class ItemDetailPage(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("background: #E0DDD8; max-height: 0.5px;")
+        sep.setObjectName("divider")
         info_layout.addWidget(sep)
 
         desc_title = QLabel("Description")
-        desc_title.setStyleSheet("font-size: 14px; font-weight: 500; color: #1A1A1A;")
+        desc_title.setObjectName("sectionTitle")
         self.detail_desc = QLabel()
         self.detail_desc.setWordWrap(True)
-        self.detail_desc.setStyleSheet("font-size: 14px; color: #6B6A66;")
+        self.detail_desc.setObjectName("muted")
         info_layout.addWidget(desc_title)
         info_layout.addWidget(self.detail_desc)
 
@@ -284,18 +253,12 @@ class ItemDetailPage(QWidget):
 
         self.history_card = QFrame()
         self.history_card.setObjectName("historyCard")
-        self.history_card.setStyleSheet("""
-            #historyCard {
-                background: #ffffff; border: 0.5px solid #E0DDD8;
-                border-radius: 12px; padding: 24px;
-            }
-        """)
         history_layout = QVBoxLayout(self.history_card)
         history_layout.setSpacing(12)
 
         hist_header = QHBoxLayout()
         hist_title = QLabel("Recent History")
-        hist_title.setStyleSheet("font-size: 18px; font-weight: 500; color: #1A1A1A;")
+        hist_title.setObjectName("historyTitle")
         hist_header.addWidget(hist_title)
         hist_header.addStretch()
         history_layout.addLayout(hist_header)
@@ -306,6 +269,7 @@ class ItemDetailPage(QWidget):
         history_layout.addStretch()
 
         right_col.addWidget(self.history_card)
+        right_col.addStretch()
 
         right_widget = QWidget()
         right_widget.setLayout(right_col)
@@ -313,6 +277,7 @@ class ItemDetailPage(QWidget):
         bento.addWidget(left_widget, 5)
         bento.addWidget(right_widget, 7)
         layout.addLayout(bento)
+        layout.addStretch()
 
         scroll.setWidget(content)
         outer.addWidget(scroll)
@@ -323,6 +288,7 @@ class ItemDetailPage(QWidget):
         visible = is_owner()
         self.btn_maintenance.setVisible(visible)
         self.btn_edit.setVisible(visible)
+        self.history_card.setVisible(visible)  # Hanya tampil ke owner
 
     def _load_data(self, item_id):
         item = get_inventory_by_id(item_id)
@@ -337,6 +303,22 @@ class ItemDetailPage(QWidget):
         price = item.get("price_per_day", 0)
         condition = item.get("condition", "Baik")
         created = item.get("created_at", "")[:10]
+        img_url = item.get("image_url", "")
+
+        # Load main image
+        try:
+            pix = _load_pixmap(img_url, size=320) if img_url else None
+            if pix:
+                self.img_placeholder.setPixmap(pix)
+            else:
+                self.img_placeholder.setText("☐")
+                self.img_placeholder.setObjectName("imgPlaceholder")
+        except Exception:
+            self.img_placeholder.setText("☐")
+            self.img_placeholder.setObjectName("imgPlaceholder")
+
+        # Hide thumbnail row if only 1 image (no gallery needed)
+        self.thumb_container.setVisible(False)
 
         self.bc_category.setText(cat)
         self.bc_name.setText(name)
@@ -359,10 +341,7 @@ class ItemDetailPage(QWidget):
         self.spec_created.set_value(created)
 
         self.img_status_badge.setText(f"\u25cf  {cond_label}")
-        self.img_status_badge.setStyleSheet(f"""
-            background: {cond_bg}; color: {cond_fg}; font-size: 12px;
-            font-weight: 500; padding: 6px 14px; border-radius: 8px;
-        """)
+        self.img_status_badge.setProperty("condition", condition)
 
         rentals = get_rentals_by_inventory(item_id) or []
         self.spec_rentals_count.set_value(f"{len(rentals)} transactions")
@@ -375,30 +354,30 @@ class ItemDetailPage(QWidget):
         recent = sorted(rentals, key=lambda r: r.get("created_at", ""), reverse=True)[:5]
         if not recent:
             empty = QLabel("No rental history for this item.")
-            empty.setStyleSheet("font-size: 13px; color: #8C8A86; padding: 8px 0; background: transparent;")
+            empty.setObjectName("rowLabel")
             self.history_container.addWidget(empty)
         else:
-            for r in recent:
+            # Aggregasi: tampilkan berapa kali setiap customer menyewa item ini
+            customer_rentals = {}
+            for r in rentals:
                 user_data = r.get("users") or {}
-                status = r.get("status", "")
-                start = r.get("start_date", "")
-                end = r.get("end_date", "")
-                if status == "returned":
-                    icon = "\u2713"
-                    title = "Returned & Inspected"
-                    subtitle = f"by {user_data.get('name', '-')} \u2022 {r.get('return_date', '-')}"
-                elif status == "active":
-                    icon = "\u2197"
-                    title = "Currently Rented"
-                    subtitle = f"{user_data.get('name', '-')} \u2022 {start} to {end}"
-                elif status == "confirmed":
-                    icon = "\u25a0"
-                    title = "Upcoming Rental"
-                    subtitle = f"{user_data.get('name', '-')} \u2022 {start} to {end}"
-                else:
-                    icon = "\u25cb"
-                    title = "Rental Request"
-                    subtitle = f"{user_data.get('name', '-')} \u2022 Status: {status}"
+                user_id = user_data.get("id", "unknown")
+                user_name = user_data.get("name", "Unknown")
+                if user_id not in customer_rentals:
+                    customer_rentals[user_id] = {"name": user_name, "count": 0}
+                customer_rentals[user_id]["count"] += 1
+            
+            # Top customers berdasarkan count rental
+            top_customers = sorted(customer_rentals.items(), 
+                                 key=lambda x: x[1]["count"], 
+                                 reverse=True)[:5]
+            
+            for user_id, data in top_customers:
+                count = data["count"]
+                name = data["name"]
+                icon = "👤"  # Simbol customer
+                title = name
+                subtitle = f"{count} rental{'s' if count > 1 else ''}"
                 self.history_container.addWidget(HistoryItem(icon, title, subtitle))
 
     def _toggle_maintenance(self):

@@ -466,6 +466,7 @@ class TopBar(QFrame):
         # Tombol dark/light mode
         self.theme_btn = QPushButton("🌙 Dark")
         self.theme_btn.setFixedHeight(36)
+        self.theme_btn.setMinimumWidth(96)
         self.theme_btn.setCursor(Qt.PointingHandCursor)
         self.theme_btn.clicked.connect(self._toggle_theme)
         layout.addWidget(self.theme_btn)
@@ -473,6 +474,8 @@ class TopBar(QFrame):
         self.logout_btn = QPushButton("Log out")
         self.logout_btn.setObjectName("topIconBtn")
         self.logout_btn.setCursor(Qt.PointingHandCursor)
+        self.logout_btn.setFixedHeight(36)
+        self.logout_btn.setMinimumWidth(96)
         self.logout_btn.clicked.connect(self.logout_requested.emit)
         layout.addWidget(self.logout_btn)
 
@@ -586,6 +589,7 @@ class MainWindow(QMainWindow):
 
         self.history_page = HistoryPage()
         self.history_page.navigate_to.connect(self._navigate_by_name)
+        self.history_page.open_item_detail.connect(self._open_item_detail)
 
         self.item_detail_page = ItemDetailPage()
         self.item_detail_page.navigate_to.connect(self._navigate_by_name)
@@ -711,6 +715,7 @@ class MainWindow(QMainWindow):
         self._update_status_bar("Silakan masuk")
 
     def _show_authenticated(self, user):
+        print(f"[MainWindow._show_authenticated] User logged in: {user}")
         self.sidebar.setVisible(True)
         self.topbar.setVisible(True)
 
@@ -720,11 +725,19 @@ class MainWindow(QMainWindow):
         self._update_status_bar(f"Masuk sebagai {user['name']} ({role})")
 
         if role == "owner":
+            # Reset dashboard owner sebelum load data user baru
+            print("[MainWindow._show_authenticated] Resetting owner dashboard...")
+            self.dashboard_owner.reset()
             self.stack.setCurrentIndex(PAGE_DASHBOARD_OWNER)
+            print("[MainWindow._show_authenticated] Loading data for owner dashboard...")
             self.dashboard_owner.refresh()
             self.topbar.set_title("Dasbor Pemilik")
         else:
+            # Reset dashboard customer sebelum load data user baru
+            print("[MainWindow._show_authenticated] Resetting customer dashboard...")
+            self.dashboard_customer.reset()
             self.stack.setCurrentIndex(PAGE_DASHBOARD_CUSTOMER)
+            print("[MainWindow._show_authenticated] Loading data for customer dashboard...")
             self.dashboard_customer.refresh()
             self.topbar.set_title("Beranda")
 
@@ -778,9 +791,14 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentIndex(idx)
         self.sidebar.set_active(name)
 
+        # Refresh halaman jika memiliki method refresh
+        # History page selalu di-refresh agar data terbaru ditampilkan
         current = self.stack.currentWidget()
         if hasattr(current, "refresh"):
-            current.refresh()
+            try:
+                current.refresh()
+            except Exception as e:
+                print(f"[MainWindow] Error refreshing page {name}: {e}")
 
     def _open_item_detail(self, item_id):
         self.item_detail_page.load_item(item_id)

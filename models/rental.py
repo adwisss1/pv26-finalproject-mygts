@@ -13,7 +13,7 @@ def get_all():
     return get_client().table(TABLE).select("*, users(*), inventories(*)").execute().data
 
 def get_by_user(user_id: str):
-    return get_client().table(TABLE).select("*, inventories(*)").eq("user_id", user_id).execute().data
+    return get_client().table(TABLE).select("*, users(*), inventories(*)").eq("user_id", user_id).execute().data
 
 def get_by_inventory(inventory_id: str):
     return get_client().table(TABLE).select("*, users(*)").eq("inventory_id", inventory_id).execute().data

@@ -12,6 +12,7 @@ from controllers.auth_controller import get_current_user, is_owner
 NOTIF_ICONS = {
     "sewa": ("#0F6E56", "\u2610"),           # Kotak pesanan
     "konfirmasi": ("#1D9E75", "\u2713"),     # Centang
+    "rejection": ("#E24B4A", "\u2717"),      # X/cross
     "pengembalian": ("#BA7517", "\u21b6"),   # Panah kembali
     "denda": ("#E24B4A", "\u26a0"),          # Warning
 }
@@ -33,18 +34,13 @@ TAB_STYLES = {
 }
 
 class NotificationItem(QFrame):
+    clicked = Signal(object)
     def __init__(self, notif_type, title, sub, timestamp, unread=True):
         super().__init__()
         bg, icon_char = NOTIF_ICONS.get(notif_type, ("#8C8A86", "\u2139"))
 
-        self.setStyleSheet(f"""
-            NotificationItem {{
-                background: {"#F8FDFB" if unread else "transparent"};
-                border-bottom: 1px solid #E0DDD8;
-                border-left: 4px solid {"#0F6E56" if unread else "transparent"};
-            }}
-            NotificationItem:hover {{ background: {"#E8F7F2" if unread else "#FAFAF9"}; }}
-        """)
+        self.setObjectName("notificationItem")
+        self.setProperty("unread", bool(unread))
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
@@ -52,17 +48,18 @@ class NotificationItem(QFrame):
 
         icon_frame = QFrame()
         icon_frame.setFixedSize(40, 40)
-        icon_frame.setStyleSheet(f"background: {bg}; border-radius: 20px;")
+        icon_frame.setObjectName("notifIconFrame")
+        icon_frame.setProperty("bg", bg)
         il = QVBoxLayout(icon_frame)
         il.setAlignment(Qt.AlignCenter)
         il.setContentsMargins(0,0,0,0)
         ic = QLabel(icon_char)
-        ic.setStyleSheet("font-size: 18px; color: #ffffff; background: transparent;")
+        ic.setObjectName("notifIcon")
         il.addWidget(ic)
 
         if unread:
             dot = QLabel("\u25cf")
-            dot.setStyleSheet("font-size: 12px; color: #E24B4A; background: transparent;")
+            dot.setObjectName("notifDot")
             dot.setFixedWidth(16)
 
         text_col = QVBoxLayout()
@@ -71,20 +68,20 @@ class NotificationItem(QFrame):
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #1A1A1A; background: transparent;")
+        title_lbl.setObjectName("notifTitle")
         title_row.addWidget(title_lbl)
         if unread: title_row.addWidget(dot)
         title_row.addStretch()
         text_col.addLayout(title_row)
 
         sub_lbl = QLabel(sub)
-        sub_lbl.setStyleSheet("font-size: 13px; color: #6B6A66; background: transparent;")
+        sub_lbl.setObjectName("notifSub")
         text_col.addWidget(sub_lbl)
 
         right_col = QVBoxLayout()
         right_col.setAlignment(Qt.AlignTop | Qt.AlignRight)
         ts = QLabel(timestamp)
-        ts.setStyleSheet("font-size: 12px; font-weight: bold; color: #A8A6A2; background: transparent;")
+        ts.setObjectName("notifTs")
         right_col.addWidget(ts)
 
         layout.addWidget(icon_frame)
@@ -94,6 +91,14 @@ class NotificationItem(QFrame):
         rw.setLayout(right_col)
         rw.setFixedWidth(120)
         layout.addWidget(rw)
+
+    def mousePressEvent(self, event):
+        # Emit clicked so the page can manage selected state across items
+        try:
+            self.clicked.emit(self)
+        except Exception:
+            pass
+        return super().mousePressEvent(event)
 
 
 class NotificationPage(QWidget):
@@ -115,9 +120,10 @@ class NotificationPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setObjectName("scrollArea")
 
-        content = QWidget(styleSheet="background: transparent;")
+        content = QWidget()
+        content.setObjectName("pageContent")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(28, 16, 28, 28)
         layout.setSpacing(16)
@@ -128,9 +134,10 @@ class NotificationPage(QWidget):
         self.tab_row = QHBoxLayout()
         self.tab_row.setSpacing(8)
         self.tab_buttons = {}
-        for key, label in [("all", "Semua"), ("unread", "Belum Dibaca"), ("sewa", "Penyewaan"), ("pengembalian", "Pengembalian")]:
+        for key, label in [("all", "Semua"), ("unread", "Belum Dibaca"), ("sewa", "Penyewaan"), ("ditolak", "Ditolak"), ("pengembalian", "Pengembalian")]:
             btn = QPushButton(label)
             btn.setCursor(Qt.PointingHandCursor)
+            btn.setObjectName("tabButton")
             btn.clicked.connect(lambda checked, k=key: self._switch_tab(k))
             self.tab_buttons[key] = btn
             self.tab_row.addWidget(btn)
@@ -140,10 +147,7 @@ class NotificationPage(QWidget):
 
         self.mark_read_btn = QPushButton("\u2713 Tandai semua dibaca")
         self.mark_read_btn.setCursor(Qt.PointingHandCursor)
-        self.mark_read_btn.setStyleSheet("""
-            QPushButton { background: transparent; border: 1px solid #D4D2CD; border-radius: 8px; font-size: 13px; font-weight: bold; color: #6B6A66; padding: 8px 16px; }
-            QPushButton:hover { background: #F0EFEB; color: #1A1A1A; }
-        """)
+        self.mark_read_btn.setObjectName("outline")
         self.mark_read_btn.clicked.connect(self._mark_all_read)
         header_row.addWidget(self.mark_read_btn)
         
@@ -151,9 +155,7 @@ class NotificationPage(QWidget):
 
         # ── Notification List Container ──
         self.card_frame = QFrame()
-        self.card_frame.setStyleSheet("""
-            QFrame { background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px; }
-        """)
+        self.card_frame.setObjectName("cardFrame")
         card_layout = QVBoxLayout(self.card_frame)
         card_layout.setContentsMargins(0, 0, 0, 0)
         card_layout.setSpacing(0)
@@ -164,7 +166,7 @@ class NotificationPage(QWidget):
 
         # Empty State
         self.empty_label = QLabel()
-        self.empty_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #8C8A86; padding: 60px; border: none;")
+        self.empty_label.setObjectName("emptyLabel")
         self.empty_label.setAlignment(Qt.AlignCenter)
         card_layout.addWidget(self.empty_label)
 
@@ -208,20 +210,22 @@ class NotificationPage(QWidget):
             else:
                 if status == "pending":
                     n_type, title = "sewa", f"Penyewaan {item_name} sedang menunggu konfirmasi"
+                elif status == "rejected":
+                    n_type, title = "rejection", f"✗ Penyewaan {item_name} ditolak oleh pemilik sanggar"
                 elif is_overdue:
                     n_type, title = "denda", f"Peringatan! Pengembalian {item_name} telah lewat waktu"
                     if fine > 0: sub += f" | Denda: Rp {fine:,.0f}".replace(",", ".")
                 elif status == "confirmed":
-                    n_type, title = "konfirmasi", f"Penyewaan {item_name} dikonfirmasi. Silakan ambil."
+                    n_type, title = "konfirmasi", f"✓ Penyewaan {item_name} dikonfirmasi! Silakan ambil."
                 elif status == "active":
                     n_type, title = "konfirmasi", f"Masa sewa {item_name} sedang berjalan."
                 elif status == "returned":
                     n_type, title = "pengembalian", f"Pengembalian {item_name} berhasil dikonfirmasi"
 
             if title:
-                # Logika unread: jika rental pending atau overdue, anggap belum dibaca
+                # Logika unread: jika rental pending, rejected, confirmed, atau overdue, anggap belum dibaca
                 # Jika ID rental ini sudah pernah di-mark read, ubah jadi False
-                is_unread = status == "pending" or is_overdue
+                is_unread = status in ("pending", "rejected", "confirmed") or is_overdue
                 notif_id = f"{r.get('id')}_{status}" 
                 
                 if notif_id in self._read_ids:
@@ -244,7 +248,9 @@ class NotificationPage(QWidget):
         ucount = sum(1 for n in self._notifications if n.get("unread"))
         self.tab_buttons["unread"].setText(f"Belum Dibaca ({ucount})" if ucount > 0 else "Belum Dibaca")
         for key, btn in self.tab_buttons.items():
-            btn.setStyleSheet(TAB_STYLES["active" if key == self._current_tab else "inactive"])
+            is_active = (key == self._current_tab)
+            btn.setProperty("active", "true" if is_active else "false")
+            btn.style().unpolish(btn); btn.style().polish(btn); btn.update()
 
     def _switch_tab(self, key):
         self._current_tab = key
@@ -261,20 +267,27 @@ class NotificationPage(QWidget):
             filtered = [n for n in filtered if n.get("unread")]
         elif self._current_tab == "sewa":
             filtered = [n for n in filtered if n.get("type") in ("sewa", "konfirmasi")]
+        elif self._current_tab == "ditolak":
+            filtered = [n for n in filtered if n.get("type") == "rejection"]
         elif self._current_tab == "pengembalian":
             filtered = [n for n in filtered if n.get("type") in ("pengembalian", "denda")]
 
         if not filtered:
             self.empty_label.setVisible(True)
             self.empty_label.setText(f"\U0001f514\n\nTidak ada notifikasi di kategori '{self.tab_buttons[self._current_tab].text()}'.")
-            self.card_frame.setStyleSheet("QFrame { background: transparent; border: 1.5px dashed #D4D2CD; border-radius: 12px; }")
+            self.card_frame.setProperty("empty", True)
+            self.card_frame.style().unpolish(self.card_frame); self.card_frame.style().polish(self.card_frame); self.card_frame.update()
             return
 
         self.empty_label.setVisible(False)
-        self.card_frame.setStyleSheet("QFrame { background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px; }")
+        self.card_frame.setProperty("empty", False)
+        self.card_frame.style().unpolish(self.card_frame); self.card_frame.style().polish(self.card_frame); self.card_frame.update()
         
         for n in filtered:
             item = NotificationItem(n["type"], n["title"], n["sub"], n["ts"], unread=n.get("unread", False))
+            # attach id so we can mark read / track selection
+            item._notif_id = n.get("id")
+            item.clicked.connect(self._on_item_clicked)
             self.list_container.addWidget(item)
 
     def _mark_all_read(self):
@@ -282,5 +295,30 @@ class NotificationPage(QWidget):
             n["unread"] = False
             self._read_ids.add(n["id"]) # Simpan state ke set lokal
             
+        self._apply_tab_style()
+        self._render_list()
+
+    def _on_item_clicked(self, item_widget):
+        # Clear selected on all items
+        for i in range(self.list_container.count()):
+            it = self.list_container.itemAt(i).widget()
+            if not it: continue
+            it.setProperty("selected", False)
+            it.style().unpolish(it); it.style().polish(it); it.update()
+
+        # Set selected on clicked
+        item_widget.setProperty("selected", True)
+        item_widget.style().unpolish(item_widget); item_widget.style().polish(item_widget); item_widget.update()
+
+        # Mark underlying notification as read (persist in local session set)
+        nid = getattr(item_widget, "_notif_id", None)
+        if nid:
+            self._read_ids.add(nid)
+            for n in self._notifications:
+                if n.get("id") == nid:
+                    n["unread"] = False
+                    break
+
+        # Refresh tab counts and list visuals
         self._apply_tab_style()
         self._render_list()

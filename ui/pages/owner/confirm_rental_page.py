@@ -31,12 +31,6 @@ class TabBar(QFrame):
         self._counts: dict[str, int] = {}
         self.setObjectName("tabBar")
         self.setFixedHeight(52)
-        self.setStyleSheet("""
-            #tabBar {
-                background: #ECEAE6;
-                border-radius: 14px;
-            }
-        """)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(4)
@@ -69,39 +63,28 @@ class TabBar(QFrame):
             cnt_str = f"  ({cnt})" if key == "pending" and cnt > 0 else ""
             btn.setText(f"{icon_map[key]}  {label_map[key]}{cnt_str}")
 
+            # mark active/inactive state for QSS
             if key == self._active:
-                color_map = {
-                    "pending":   ("#0F6E56", "#ffffff"),
-                    "confirmed": ("#1D9E75", "#ffffff"),
-                    "rejected":  ("#E24B4A", "#ffffff"),
-                }
-                bg, fg = color_map[key]
-                btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background: {bg};
-                        border: none;
-                        border-radius: 10px;
-                        font-size: 13px;
-                        font-weight: 600;
-                        color: {fg};
-                        padding: 0 18px;
-                    }}
+                btn.setObjectName("tabActive")
+                btn.setProperty("active", True)
+                # Inline stylesheet untuk memastikan styling jelas
+                btn.setStyleSheet("""
+                    QPushButton#tabActive {
+                        background: #0F6E56; color: #ffffff; border: 1px solid rgba(0,0,0,0.06);
+                        border-radius: 12px; padding: 8px 18px; font-weight: 600; margin: 2px;
+                    }
+                    QPushButton#tabActive:hover { background: #0b5a47; }
                 """)
             else:
+                btn.setObjectName("tabInactive")
+                btn.setProperty("active", False)
+                # Inline stylesheet untuk inactive tab dengan warna gelap agar berbeda
                 btn.setStyleSheet("""
-                    QPushButton {
-                        background: transparent;
-                        border: none;
-                        border-radius: 10px;
-                        font-size: 13px;
-                        font-weight: 400;
-                        color: #6B6A66;
-                        padding: 0 18px;
+                    QPushButton#tabInactive {
+                        background: transparent; color: #1A1A1A; border: none; 
+                        border-radius: 12px; padding: 8px 18px; margin: 2px; font-weight: 500;
                     }
-                    QPushButton:hover {
-                        background: #D8D6D2;
-                        color: #1A1A1A;
-                    }
+                    QPushButton#tabInactive:hover { background: #E0DDD8; color: #000000; }
                 """)
 
 
@@ -124,20 +107,8 @@ class RentalConfirmCard(QFrame):
         self._rental_id = rental_data.get("id", "")
         self._mode = mode
         self.setObjectName("confirmCard")
-
-        accent, bg, _ = self._STATUS_CONFIG.get(mode, ("#ccc", "#fff", "-"))
-        self.setStyleSheet(f"""
-            #confirmCard {{
-                background: #ffffff;
-                border: 1px solid #ECEAE6;
-                border-left: 4px solid {accent};
-                border-radius: 14px;
-            }}
-            #confirmCard:hover {{
-                border-color: {accent};
-                border-left: 4px solid {accent};
-            }}
-        """)
+        # expose status for QSS rules (pending/confirmed/rejected)
+        self.setProperty("status", mode)
 
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()
@@ -146,6 +117,8 @@ class RentalConfirmCard(QFrame):
         shadow.setColor(QColor(0, 0, 0, 18))
         self.setGraphicsEffect(shadow)
 
+        # resolve colors for status
+        accent, bg, _label = self._STATUS_CONFIG.get(mode, ("#ccc", "#eee", "-"))
         self._build(rental_data, mode, accent, bg)
 
     def _build(self, r: dict, mode: str, accent: str, bg: str):
@@ -177,33 +150,26 @@ class RentalConfirmCard(QFrame):
 
         avatar = QFrame()
         avatar.setFixedSize(52, 52)
-        avatar.setStyleSheet(f"""
-            background: {accent}22;
-            border-radius: 26px;
-            border: 2px solid {accent}44;
-        """)
+        avatar.setObjectName("avatar")
+        # status property on parent will control avatar colors via QSS
         av_lay = QVBoxLayout(avatar)
         av_lay.setAlignment(Qt.AlignCenter)
         av_lay.setContentsMargins(0, 0, 0, 0)
         initial = (user.get("name") or "?")[0].upper()
         av_lbl = QLabel(initial)
-        av_lbl.setStyleSheet(f"font-size: 20px; font-weight: 700; color: {accent}; background: transparent;")
+        av_lbl.setObjectName("avatarLabel")
         av_lbl.setAlignment(Qt.AlignCenter)
         av_lay.addWidget(av_lbl)
 
         name_lbl = QLabel(user.get("name", "-"))
         name_lbl.setAlignment(Qt.AlignCenter)
-        name_lbl.setStyleSheet("font-size: 12px; font-weight: 600; color: #1A1A1A; background: transparent;")
+        name_lbl.setObjectName("avatarName")
         name_lbl.setWordWrap(True)
         name_lbl.setMaximumWidth(106)
 
         role_badge = QLabel("Customer")
         role_badge.setAlignment(Qt.AlignCenter)
-        role_badge.setStyleSheet("""
-            font-size: 10px; font-weight: 600; color: #0F6E56;
-            background: #E8F5F1; border-radius: 4px;
-            padding: 2px 8px;
-        """)
+        role_badge.setObjectName("roleBadge")
 
         avatar_col.addWidget(avatar, 0, Qt.AlignHCenter)
         avatar_col.addWidget(name_lbl)
@@ -212,13 +178,13 @@ class RentalConfirmCard(QFrame):
         av_widget = QWidget()
         av_widget.setLayout(avatar_col)
         av_widget.setFixedWidth(110)
-        av_widget.setStyleSheet("background: transparent;")
+        av_widget.setObjectName("avatarContainer")
         outer.addWidget(av_widget)
 
         # ── Divider ───────────────────────────────────────────────────────
         div = QFrame()
         div.setFixedWidth(1)
-        div.setStyleSheet("background: #ECEAE6; border: none;")
+        div.setObjectName("divider")
         outer.addWidget(div)
 
         # ── Info kolom ────────────────────────────────────────────────────
@@ -227,49 +193,38 @@ class RentalConfirmCard(QFrame):
         info_col.setAlignment(Qt.AlignTop)
 
         item_name = QLabel(inv.get("name", "-"))
-        item_name.setStyleSheet(
-            "font-size: 16px; font-weight: 700; color: #111111; background: transparent;"
-        )
+        item_name.setObjectName("itemName")
         info_col.addWidget(item_name)
 
         # Kategori pill
         cat_row = QHBoxLayout()
         cat_row.setSpacing(8)
         cat_badge = QLabel(f"📁  {inv.get('category', '-')}")
-        cat_badge.setStyleSheet("""
-            font-size: 11px; font-weight: 500; color: #6B6A66;
-            background: #F4F3F0; border-radius: 6px;
-            padding: 3px 10px;
-        """)
+        cat_badge.setObjectName("catBadge")
         cat_row.addWidget(cat_badge)
         cat_row.addStretch()
         info_col.addLayout(cat_row)
 
         # Tanggal
         date_lbl = QLabel(f"📅  {start}  →  {end}   ({days} hari)")
-        date_lbl.setStyleSheet(
-            "font-size: 13px; color: #6B6A66; background: transparent;"
-        )
+        date_lbl.setObjectName("dateLabel")
         info_col.addWidget(date_lbl)
 
         # Total harga
         total_lbl = QLabel(f"💰  Rp {total:,.0f}".replace(",", "."))
-        total_lbl.setStyleSheet(
-            f"font-size: 15px; font-weight: 700; color: {accent}; background: transparent;"
-        )
+        total_lbl.setObjectName("totalLabel")
+        total_lbl.setProperty("statusAccent", accent)
         info_col.addWidget(total_lbl)
 
         if notes:
             notes_lbl = QLabel(f"📝  {notes}")
             notes_lbl.setWordWrap(True)
-            notes_lbl.setStyleSheet(
-                "font-size: 12px; color: #A8A6A2; background: transparent; font-style: italic;"
-            )
+            notes_lbl.setObjectName("notesLabel")
             info_col.addWidget(notes_lbl)
 
         info_widget = QWidget()
         info_widget.setLayout(info_col)
-        info_widget.setStyleSheet("background: transparent;")
+        info_widget.setObjectName("infoWidget")
         outer.addWidget(info_widget, 1)
 
         # ── Aksi kolom ────────────────────────────────────────────────────
@@ -280,29 +235,48 @@ class RentalConfirmCard(QFrame):
         if mode == "pending":
             confirm_btn = QPushButton("✓  Konfirmasi")
             confirm_btn.setCursor(Qt.PointingHandCursor)
-            confirm_btn.setFixedSize(140, 40)
+            confirm_btn.setMinimumWidth(140)
+            confirm_btn.setFixedHeight(40)
+            confirm_btn.setObjectName("btnConfirm")
             confirm_btn.setStyleSheet("""
                 QPushButton {
-                    background: #0F6E56; border: none; border-radius: 10px;
-                    font-size: 13px; font-weight: 600; color: #ffffff;
+                    background: #0F6E56;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 10px;
+                    padding: 8px 12px;
+                    font-weight: 600;
                 }
-                QPushButton:hover { background: #0A5A45; }
-                QPushButton:pressed { background: #084D3C; }
+                QPushButton:hover {
+                    background: #0A5A45;
+                }
+                QPushButton:pressed {
+                    background: #08463a;
+                }
             """)
             confirm_btn.clicked.connect(lambda: self.confirmed.emit(self._rental_id))
 
             reject_btn = QPushButton("✗  Tolak")
             reject_btn.setCursor(Qt.PointingHandCursor)
-            reject_btn.setFixedSize(140, 40)
+            reject_btn.setMinimumWidth(140)
+            reject_btn.setFixedHeight(40)
+            reject_btn.setObjectName("btnReject")
             reject_btn.setStyleSheet("""
                 QPushButton {
                     background: transparent;
                     border: 1.5px solid #E24B4A;
+                    color: #E24B4A;
                     border-radius: 10px;
-                    font-size: 13px; font-weight: 500; color: #E24B4A;
+                    padding: 8px 12px;
+                    font-weight: 600;
                 }
-                QPushButton:hover { background: #FDE8E8; }
-                QPushButton:pressed { background: #FDD0D0; }
+                QPushButton:hover {
+                    background: #FDE8E8;
+                }
+                QPushButton:pressed {
+                    background: #FDE8E8;
+                    border-color: #C23C3A;
+                }
             """)
             reject_btn.clicked.connect(lambda: self.rejected.emit(self._rental_id))
 
@@ -312,20 +286,17 @@ class RentalConfirmCard(QFrame):
         else:
             accent_c, bg_c, label_c = self._STATUS_CONFIG.get(mode, ("#ccc", "#eee", "-"))
             status_chip = QFrame()
-            status_chip.setStyleSheet(f"""
-                background: {bg_c};
-                border: 1.5px solid {accent_c}44;
-                border-radius: 10px;
-            """)
+            status_chip.setObjectName("statusChip")
+            status_chip.setProperty("status", mode)
             chip_lay = QHBoxLayout(status_chip)
             chip_lay.setContentsMargins(14, 10, 14, 10)
             dot = QFrame()
             dot.setFixedSize(8, 8)
-            dot.setStyleSheet(f"background: {accent_c}; border-radius: 4px;")
+            dot.setObjectName("statusDot")
+            dot.setProperty("status", mode)
             chip_lbl = QLabel(label_c)
-            chip_lbl.setStyleSheet(
-                f"font-size: 13px; font-weight: 600; color: {accent_c}; background: transparent;"
-            )
+            chip_lbl.setObjectName("statusLabel")
+            chip_lbl.setProperty("status", mode)
             chip_lay.addWidget(dot)
             chip_lay.addSpacing(8)
             chip_lay.addWidget(chip_lbl)
@@ -333,8 +304,8 @@ class RentalConfirmCard(QFrame):
 
         action_widget = QWidget()
         action_widget.setLayout(action_col)
-        action_widget.setFixedWidth(160)
-        action_widget.setStyleSheet("background: transparent;")
+        action_widget.setMinimumWidth(160)
+        action_widget.setObjectName("actionWidget")
         outer.addWidget(action_widget)
 
 
@@ -359,20 +330,20 @@ class EmptyState(QWidget):
 
         ic = QLabel(icon)
         ic.setAlignment(Qt.AlignCenter)
-        ic.setStyleSheet("font-size: 40px; background: transparent;")
+        ic.setObjectName("emptyIcon")
 
         tl = QLabel(title)
         tl.setAlignment(Qt.AlignCenter)
-        tl.setStyleSheet("font-size: 16px; font-weight: 600; color: #3A3A3A; background: transparent;")
+        tl.setObjectName("emptyTitle")
 
         sl = QLabel(sub)
         sl.setAlignment(Qt.AlignCenter)
-        sl.setStyleSheet("font-size: 13px; color: #A8A6A2; background: transparent;")
+        sl.setObjectName("emptySub")
 
         layout.addWidget(ic)
         layout.addWidget(tl)
         layout.addWidget(sl)
-        self.setStyleSheet("background: transparent;")
+        self.setObjectName("transparentContent")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -387,6 +358,7 @@ class ConfirmRentalPage(QWidget):
         super().__init__()
         self._current_tab = "pending"
         self._build_ui()
+        self._load_data()
 
     def refresh(self):
         self._load_data()
@@ -399,10 +371,10 @@ class ConfirmRentalPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setObjectName("transparentScroll")
 
         content = QWidget()
-        content.setStyleSheet("background: transparent;")
+        content.setObjectName("transparentContent")
         self._content_layout = QVBoxLayout(content)
         self._content_layout.setContentsMargins(28, 28, 28, 28)
         self._content_layout.setSpacing(20)
@@ -410,17 +382,13 @@ class ConfirmRentalPage(QWidget):
         # ── Header (TANPA duplikasi — topbar sudah tampilkan judul) ──────
         header_row = QHBoxLayout()
         sub = QLabel("Kelola dan tindaklanjuti permintaan penyewaan dari customer.")
-        sub.setStyleSheet("font-size: 13px; color: #8C8A86; background: transparent;")
+        sub.setObjectName("formSubtitle")
         header_row.addWidget(sub)
         header_row.addStretch()
 
         # Summary count pill
         self._summary_pill = QLabel("Memuat...")
-        self._summary_pill.setStyleSheet("""
-            font-size: 12px; color: #0F6E56; font-weight: 600;
-            background: #E8F5F1; border-radius: 20px;
-            padding: 6px 14px;
-        """)
+        self._summary_pill.setObjectName("summaryPill")
         header_row.addWidget(self._summary_pill)
         self._content_layout.addLayout(header_row)
 

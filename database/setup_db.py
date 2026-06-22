@@ -37,22 +37,6 @@ users = [
         "role":          "owner",
         "phone":         "081111111111",
     },
-    {
-        "id":            "00000000-0000-0000-0000-000000000002",
-        "name":          "Budi Santoso",
-        "email":         "customer@mygts.com",
-        "password_hash": h("customer123"),
-        "role":          "customer",
-        "phone":         "081234567890",
-    },
-    {
-        "id":            "00000000-0000-0000-0000-000000000003",
-        "name":          "Siti Rahayu",
-        "email":         "customer2@mygts.com",
-        "password_hash": h("customer123"),
-        "role":          "customer",
-        "phone":         "081298765432",
-    },
 ]
 for u in users:
     try:

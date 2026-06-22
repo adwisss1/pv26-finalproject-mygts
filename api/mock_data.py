@@ -9,24 +9,24 @@ def _hash(password):
 
 
 USERS = [
-    {
-        "id": "u1",
-        "name": "Budi Santoso",
-        "email": "customer@mygts.com",
-        "password_hash": _hash("customer123"),
-        "role": "customer",
-        "phone": "081234567890",
-        "created_at": "2025-01-01T00:00:00Z",
-    },
-    {
-        "id": "u2",
-        "name": "Siti Rahayu",
-        "email": "customer2@mygts.com",
-        "password_hash": _hash("customer123"),
-        "role": "customer",
-        "phone": "081298765432",
-        "created_at": "2025-01-15T00:00:00Z",
-    },
+    # {
+    #     "id": "u1",
+    #     "name": "Budi Santoso",
+    #     "email": "customer@mygts.com",
+    #     "password_hash": _hash("customer123"),
+    #     "role": "customer",
+    #     "phone": "081234567890",
+    #     "created_at": "2025-01-01T00:00:00Z",
+    # },
+    # {
+    #     "id": "u2",
+    #     "name": "Siti Rahayu",
+    #     "email": "customer2@mygts.com",
+    #     "password_hash": _hash("customer123"),
+    #     "role": "customer",
+    #     "phone": "081298765432",
+    #     "created_at": "2025-01-15T00:00:00Z",
+    # },
     {
         "id": "u_owner",
         "name": "Admin Sanggar",

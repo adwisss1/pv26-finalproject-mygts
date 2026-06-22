@@ -18,14 +18,17 @@ class DataWorker(QThread):
     Worker generik: jalankan callable di thread terpisah,
     emit 'result' dengan data kembalian, atau 'error' dengan pesan error.
     """
-    result  = Signal(object)   # data apapun
-    error   = Signal(str)      # pesan error
+    result    = Signal(object)   # data apapun
+    error     = Signal(str)      # pesan error
+    finished  = Signal()         # signal ketika selesai
 
     def __init__(self, func, *args, **kwargs):
         super().__init__()
         self._func   = func
         self._args   = args
         self._kwargs = kwargs
+        # Cleanup otomatis setelah selesai
+        self.finished.connect(self.deleteLater)
 
     def run(self):
         try:
@@ -33,6 +36,8 @@ class DataWorker(QThread):
             self.result.emit(data)
         except Exception as e:
             self.error.emit(str(e))
+        finally:
+            self.finished.emit()
 
 
 class ExportWorker(QThread):

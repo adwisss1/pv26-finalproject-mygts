@@ -31,14 +31,8 @@ class StatCard(QFrame):
         self.setObjectName("statCard")
         self.setMinimumHeight(88)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setStyleSheet(f"""
-            #statCard {{
-                background: #ffffff;
-                border: 1px solid #ECEAE6;
-                border-top: 3px solid {accent};
-                border-radius: 12px;
-            }}
-        """)
+        # let QSS handle visuals; expose accent via property
+        self.setProperty("accent", accent)
         self.setGraphicsEffect(_shadow())
 
         lay = QVBoxLayout(self)
@@ -47,18 +41,16 @@ class StatCard(QFrame):
 
         top = QHBoxLayout()
         ic = QLabel(icon)
-        ic.setStyleSheet(f"font-size: 18px; background: transparent; color: {accent};")
+        ic.setObjectName("statIcon")
         lbl = QLabel(label)
-        lbl.setStyleSheet("font-size: 11px; font-weight: 500; color: #8C8A86; background: transparent;")
+        lbl.setObjectName("statLabel")
         top.addWidget(ic)
         top.addWidget(lbl, 1)
         lay.addLayout(top)
 
         self.val_lbl = QLabel(value)
-        self.val_lbl.setStyleSheet(
-            f"font-size: 30px; font-weight: 700; color: {accent}; "
-            "letter-spacing: -1px; background: transparent;"
-        )
+        self.val_lbl.setObjectName("statValue")
+        self.val_lbl.setProperty("accent", accent)
         lay.addWidget(self.val_lbl)
 
     def set_value(self, v):
@@ -82,7 +74,7 @@ class FilterBar(QFrame):
         self._active = "all"
         self.setObjectName("filterBar")
         self.setFixedHeight(46)
-        self.setStyleSheet("#filterBar { background: #ECEAE6; border-radius: 12px; }")
+        self.setProperty("variant", "pill")
         lay = QHBoxLayout(self)
         lay.setContentsMargins(5, 5, 5, 5)
         lay.setSpacing(4)
@@ -92,6 +84,8 @@ class FilterBar(QFrame):
             btn = QPushButton(label)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setFixedHeight(36)
+            btn.setObjectName("filterBtn")
+            btn.setProperty("filterKey", key)
             btn.clicked.connect(lambda _, k=key: self._click(k))
             lay.addWidget(btn)
             self._btns[key] = btn
@@ -105,23 +99,34 @@ class FilterBar(QFrame):
 
     def _style(self):
         for key, btn in self._btns.items():
+            btn.setProperty("active", key == self._active)
+            btn.setProperty("late", key == "late")
+            
+            # Apply inline stylesheet untuk memastikan styling jelas
             if key == self._active:
-                c = "#E24B4A" if key == "late" else "#0F6E56"
-                btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background: {c}; border: none; border-radius: 8px;
-                        font-size: 13px; font-weight: 600; color: #fff;
-                        padding: 0 20px;
-                    }}
-                """)
+                if key == "late":
+                    btn.setStyleSheet("""
+                        QPushButton {
+                            background: #E24B4A; color: #ffffff; border: none; 
+                            border-radius: 8px; padding: 0 20px; font-size: 13px; font-weight: 600;
+                        }
+                        QPushButton:hover { background: #C73A39; }
+                    """)
+                else:
+                    btn.setStyleSheet("""
+                        QPushButton {
+                            background: #0F6E56; color: #ffffff; border: none; 
+                            border-radius: 8px; padding: 0 20px; font-size: 13px; font-weight: 600;
+                        }
+                        QPushButton:hover { background: #0b5a47; }
+                    """)
             else:
                 btn.setStyleSheet("""
                     QPushButton {
-                        background: transparent; border: none; border-radius: 8px;
-                        font-size: 13px; font-weight: 400; color: #6B6A66;
-                        padding: 0 20px;
+                        background: transparent; border: none; border-radius: 8px; 
+                        padding: 0 20px; font-size: 13px; color: #1A1A1A; font-weight: 500;
                     }
-                    QPushButton:hover { background: #D8D6D2; color: #1A1A1A; }
+                    QPushButton:hover { background: #D8D6D2; color: #000000; }
                 """)
 
 
@@ -190,36 +195,27 @@ class ReturnConfirmCard(QFrame):
 
         circle = QFrame()
         circle.setFixedSize(54, 54)
-        circle.setStyleSheet(f"""
-            background: {accent}1A;
-            border-radius: 27px;
-            border: 2px solid {accent}50;
-        """)
+        circle.setObjectName("avatarCircle")
+        circle.setProperty("accent", accent)
         cl = QVBoxLayout(circle)
         cl.setAlignment(Qt.AlignCenter)
         cl.setContentsMargins(0, 0, 0, 0)
         init_lbl = QLabel((user.get("name") or "?")[0].upper())
         init_lbl.setAlignment(Qt.AlignCenter)
-        init_lbl.setStyleSheet(
-            f"font-size: 22px; font-weight: 700; color: {accent}; background: transparent;"
-        )
+        init_lbl.setObjectName("avatarInitial")
+        init_lbl.setProperty("accent", accent)
         cl.addWidget(init_lbl)
 
         name_lbl = QLabel(user.get("name", "-"))
         name_lbl.setAlignment(Qt.AlignCenter)
-        name_lbl.setStyleSheet(
-            "font-size: 12px; font-weight: 600; color: #1A1A1A; background: transparent;"
-        )
+        name_lbl.setObjectName("avatarName")
         name_lbl.setWordWrap(True)
         name_lbl.setMinimumWidth(110)
         name_lbl.setMaximumWidth(120)
 
         role_pill = QLabel("Customer")
         role_pill.setAlignment(Qt.AlignCenter)
-        role_pill.setStyleSheet("""
-            font-size: 10px; font-weight: 600; color: #0F6E56;
-            background: #E8F5F1; border-radius: 4px; padding: 2px 8px;
-        """)
+        role_pill.setObjectName("rolePill")
 
         av_col.addWidget(circle, 0, Qt.AlignHCenter)
         av_col.addWidget(name_lbl)
@@ -228,13 +224,13 @@ class ReturnConfirmCard(QFrame):
         av_w = QWidget()
         av_w.setLayout(av_col)
         av_w.setFixedWidth(130)
-        av_w.setStyleSheet("background: transparent;")
+        av_w.setObjectName("avatarWrapper")
         outer.addWidget(av_w)
 
         # ── Divider ───────────────────────────────────────────────────────
         div = QFrame()
         div.setFixedWidth(1)
-        div.setStyleSheet("background: #ECEAE6; border: none;")
+        div.setObjectName("divider")
         outer.addWidget(div)
 
         # ── Info ──────────────────────────────────────────────────────────
@@ -245,14 +241,9 @@ class ReturnConfirmCard(QFrame):
         # Nama barang + kategori
         name_row = QHBoxLayout()
         item_lbl = QLabel(inv.get("name", "-"))
-        item_lbl.setStyleSheet(
-            "font-size: 16px; font-weight: 700; color: #111; background: transparent;"
-        )
+        item_lbl.setObjectName("itemLabel")
         cat_pill = QLabel(f"📁 {inv.get('category', '-')}")
-        cat_pill.setStyleSheet("""
-            font-size: 11px; font-weight: 500; color: #6B6A66;
-            background: #F4F3F0; border-radius: 6px; padding: 3px 10px;
-        """)
+        cat_pill.setObjectName("catPill")
         name_row.addWidget(item_lbl)
         name_row.addSpacing(12)
         name_row.addWidget(cat_pill)
@@ -263,11 +254,9 @@ class ReturnConfirmCard(QFrame):
         meta_row = QHBoxLayout()
         meta_row.setSpacing(20)
         date_lbl = QLabel(f"📅  {start}  →  {end}  ({days} hari)")
-        date_lbl.setStyleSheet("font-size: 13px; color: #6B6A66; background: transparent;")
+        date_lbl.setObjectName("dateLabel")
         price_lbl = QLabel(f"💰  Rp {total:,.0f}".replace(",", "."))
-        price_lbl.setStyleSheet(
-            "font-size: 13px; font-weight: 700; color: #0F6E56; background: transparent;"
-        )
+        price_lbl.setObjectName("priceLabel")
         meta_row.addWidget(date_lbl)
         meta_row.addWidget(price_lbl)
         meta_row.addStretch()
@@ -275,43 +264,28 @@ class ReturnConfirmCard(QFrame):
 
         # Status chip
         chip = QFrame()
+        chip.setObjectName("statusChip")
+        chip.setProperty("late", is_late)
+        cl2 = QHBoxLayout(chip)
+        cl2.setContentsMargins(14, 8, 14, 8)
+        cl2.setSpacing(10)
+        dot = QFrame()
+        dot.setFixedSize(8, 8)
+        dot.setObjectName("statusDot")
+        dot.setProperty("late", is_late)
         if is_late:
-            chip.setStyleSheet("""
-                background: #FEF2F2; border: 1px solid #E24B4A33; border-radius: 8px;
-            """)
-            cl2 = QHBoxLayout(chip)
-            cl2.setContentsMargins(14, 8, 14, 8)
-            cl2.setSpacing(10)
-            dot = QFrame()
-            dot.setFixedSize(8, 8)
-            dot.setStyleSheet("background: #E24B4A; border-radius: 4px;")
             txt = QLabel(f"⚠  Terlambat {late_days} hari  —  Denda: Rp {fine:,.0f}".replace(",", "."))
-            txt.setStyleSheet(
-                "font-size: 13px; font-weight: 600; color: #E24B4A; background: transparent;"
-            )
-            cl2.addWidget(dot)
-            cl2.addWidget(txt)
+            txt.setObjectName("statusTextLate")
         else:
-            chip.setStyleSheet("""
-                background: #F0FDF8; border: 1px solid #0F6E5633; border-radius: 8px;
-            """)
-            cl2 = QHBoxLayout(chip)
-            cl2.setContentsMargins(14, 8, 14, 8)
-            cl2.setSpacing(10)
-            dot = QFrame()
-            dot.setFixedSize(8, 8)
-            dot.setStyleSheet("background: #1D9E75; border-radius: 4px;")
             txt = QLabel("✓  Pengembalian tepat waktu")
-            txt.setStyleSheet(
-                "font-size: 13px; font-weight: 600; color: #1D9E75; background: transparent;"
-            )
-            cl2.addWidget(dot)
-            cl2.addWidget(txt)
+            txt.setObjectName("statusTextOnTime")
+        cl2.addWidget(dot)
+        cl2.addWidget(txt)
         info.addWidget(chip)
 
         info_w = QWidget()
         info_w.setLayout(info)
-        info_w.setStyleSheet("background: transparent;")
+        info_w.setObjectName("infoWidget")
         outer.addWidget(info_w, 1)
 
         # ── Tombol ────────────────────────────────────────────────────────
@@ -322,13 +296,22 @@ class ReturnConfirmCard(QFrame):
         confirm_btn = QPushButton("↩  Konfirmasi Kembali")
         confirm_btn.setCursor(Qt.PointingHandCursor)
         confirm_btn.setFixedSize(176, 44)
+        confirm_btn.setObjectName("btnConfirmReturn")
         confirm_btn.setStyleSheet("""
             QPushButton {
-                background: #0F6E56; border: none; border-radius: 10px;
-                font-size: 13px; font-weight: 600; color: #ffffff;
+                background: #0F6E56;
+                color: #ffffff;
+                border: none;
+                border-radius: 10px;
+                padding: 8px 12px;
+                font-weight: 600;
             }
-            QPushButton:hover  { background: #0A5A45; }
-            QPushButton:pressed { background: #074D3A; }
+            QPushButton:hover {
+                background: #0A5A45;
+            }
+            QPushButton:pressed {
+                background: #08463a;
+            }
         """)
         confirm_btn.clicked.connect(lambda: self.return_confirmed.emit(self._rental_id))
         btn_col.addWidget(confirm_btn)
@@ -336,15 +319,13 @@ class ReturnConfirmCard(QFrame):
         if is_late and fine > 0:
             fine_note = QLabel(f"+ denda Rp {fine:,.0f}".replace(",", "."))
             fine_note.setAlignment(Qt.AlignCenter)
-            fine_note.setStyleSheet(
-                "font-size: 11px; color: #E24B4A; background: transparent; font-weight: 500;"
-            )
+            fine_note.setObjectName("fineNote")
             btn_col.addWidget(fine_note)
 
         btn_w = QWidget()
         btn_w.setLayout(btn_col)
         btn_w.setFixedWidth(186)
-        btn_w.setStyleSheet("background: transparent;")
+        btn_w.setObjectName("btnWrapper")
         outer.addWidget(btn_w)
 
 
@@ -380,29 +361,21 @@ class EmptyState(QFrame):
             sub_txt   = "Barang yang sedang disewa dan menunggu\npengembalian akan muncul di sini."
 
         icon_lbl.setAlignment(Qt.AlignCenter)
-        icon_lbl.setStyleSheet("font-size: 48px; background: transparent;")
+        icon_lbl.setObjectName("emptyIcon")
 
         title = QLabel(title_txt)
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(
-            "font-size: 17px; font-weight: 700; color: #2A2A2A; background: transparent;"
-        )
+        title.setObjectName("emptyTitle")
 
         sub = QLabel(sub_txt)
         sub.setAlignment(Qt.AlignCenter)
         sub.setWordWrap(True)
-        sub.setStyleSheet("font-size: 13px; color: #A8A6A2; background: transparent; line-height: 1.5;")
+        sub.setObjectName("emptySub")
 
         lay.addWidget(icon_lbl)
         lay.addWidget(title)
         lay.addWidget(sub)
-        self.setStyleSheet("""
-            #emptyCard {
-                background: #fafaf8;
-                border: 1.5px dashed #D4D2CD;
-                border-radius: 16px;
-            }
-        """)
+        self.setProperty("variant", "emptyCard")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

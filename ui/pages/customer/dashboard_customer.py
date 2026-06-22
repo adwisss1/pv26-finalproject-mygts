@@ -11,6 +11,9 @@ from controllers.inventory_controller import get_all_inventory
 from controllers.rental_controller import get_rentals_for_customer, get_rentals_by_inventory
 from controllers.auth_controller import get_current_user
 from utils.worker import DataWorker
+from ui.components import apply_outline_primary, apply_link
+from ui.pages.customer.inventory_page import _load_pixmap
+from PySide6.QtGui import QPixmap
 
 
 CATEGORY_COLORS = {
@@ -38,31 +41,27 @@ class StatCard(QFrame):
     def __init__(self, title, value, icon_char, icon_bg_color, icon_fg_color="#0F6E56"):
         super().__init__()
         self.setObjectName("statCard")
-        self.setStyleSheet("""
-            #statCard {
-                background: #ffffff; border: 0.5px solid #E0DDD8;
-                border-radius: 12px;
-            }
-        """)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
 
         icon_frame = QFrame()
         icon_frame.setFixedSize(44, 44)
-        icon_frame.setStyleSheet(f"background: {icon_bg_color}; border-radius: 8px;")
+        icon_frame.setObjectName("statIconFrame")
+        icon_frame.setProperty("iconBg", icon_bg_color)
         il = QVBoxLayout(icon_frame)
         il.setAlignment(Qt.AlignCenter)
         icon_label = QLabel(icon_char)
-        icon_label.setStyleSheet(f"font-size: 20px; color: {icon_fg_color}; background: transparent;")
+        icon_label.setObjectName("statIconLabel")
+        icon_label.setProperty("iconFg", icon_fg_color)
         il.addWidget(icon_label)
 
         text_col = QVBoxLayout()
         text_col.setSpacing(4)
         lbl_title = QLabel(title)
-        lbl_title.setStyleSheet("font-size: 12px; font-weight: 500; color: #8C8A86; background: transparent;")
+        lbl_title.setObjectName("cardTitle")
         self.value_label = QLabel(str(value))
-        self.value_label.setStyleSheet("font-size: 26px; font-weight: 700; color: #1A1A1A; background: transparent;")
+        self.value_label.setObjectName("cardValue")
         text_col.addWidget(lbl_title)
         text_col.addWidget(self.value_label)
 
@@ -79,15 +78,6 @@ class InventoryCard(QFrame):
         self._item = item_data
         self._on_rent = on_rent_callback
         self.setObjectName("invCard")
-        self.setStyleSheet("""
-            #invCard {
-                background: #ffffff; border: 0.5px solid #E0DDD8;
-                border-radius: 12px;
-            }
-            #invCard:hover {
-                border-color: #0F6E56;
-            }
-        """)
         self._build(item_data)
 
     def _build(self, item):
@@ -99,45 +89,64 @@ class InventoryCard(QFrame):
         icon = CATEGORY_ICONS.get(cat, "\u25a1")
         cat_color = CATEGORY_COLORS.get(cat, "#6B6A66")
 
-        img_placeholder = QFrame()
-        img_placeholder.setFixedHeight(130)
-        img_placeholder.setStyleSheet("""
-            background: #EDECE8;
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
-        """)
-        img_layout = QVBoxLayout(img_placeholder)
-        img_layout.setAlignment(Qt.AlignCenter)
+        img_lbl = QLabel()
+        img_lbl.setFixedSize(240, 130)
+        img_lbl.setObjectName("imgPlaceholder")
+        img_lbl.setAlignment(Qt.AlignCenter)
 
-        icon_lbl = QLabel(icon)
-        icon_lbl.setStyleSheet("font-size: 36px; color: #A8A6A2; background: transparent;")
-        img_layout.addWidget(icon_lbl)
+        # Try load image using shared loader; fall back to icon
+        img_url = item.get("image_url", "")
+        pix = None
+        try:
+            pix = _load_pixmap(img_url, size=130) if img_url else None
+        except Exception:
+            pix = None
+
+        if pix:
+            img_lbl.setPixmap(pix)
+        else:
+            icon_lbl = QLabel(icon)
+            icon_lbl.setObjectName("cardIcon")
+            # place icon centered inside the img_lbl as fallback
+            img_lbl.setText(icon)
 
         cat_badge = QFrame()
-        cat_badge.setStyleSheet(f"background: {cat_color}18; border-radius: 4px; padding: 2px 8px;")
+        cat_badge.setObjectName("catBadge")
+        cat_badge.setProperty("cat", cat)
         cb_layout = QHBoxLayout(cat_badge)
         cb_layout.setContentsMargins(6, 2, 6, 2)
         cb_layout.setAlignment(Qt.AlignCenter)
         cb_label = QLabel(cat)
-        cb_label.setStyleSheet(f"font-size: 10px; font-weight: 600; color: {cat_color}; background: transparent;")
+        cb_label.setObjectName("catBadgeLabel")
+        cb_label.setProperty("catColor", cat_color)
         cb_layout.addWidget(cb_label)
-        img_layout.addWidget(cat_badge, 0, Qt.AlignCenter)
-
+        # show category badge below image area
+        # add image label to top of card
+        # (category badge will be added below)
+        
+        # place image label in layout
+        # use a container so category badge can be positioned
+        image_container = QVBoxLayout()
+        image_container.setContentsMargins(0,0,0,0)
+        image_container.setSpacing(6)
+        image_container.addWidget(img_lbl)
+        image_container.addWidget(cat_badge, 0, Qt.AlignCenter)
+        layout.addLayout(image_container)
         info = QWidget()
-        info.setStyleSheet("background: transparent;")
+        info.setObjectName("cardInfo")
         info_layout = QVBoxLayout(info)
         info_layout.setContentsMargins(16, 12, 16, 16)
         info_layout.setSpacing(8)
 
         name = QLabel(item.get("name", ""))
-        name.setStyleSheet("font-size: 14px; font-weight: 500; color: #1A1A1A;")
+        name.setObjectName("itemName")
         name.setWordWrap(True)
         info_layout.addWidget(name)
 
         price = QLabel(f"Rp {item.get('price_per_day', 0):,}")
-        price.setStyleSheet("font-size: 14px; font-weight: 600; color: #0F6E56;")
+        price.setObjectName("itemPrice")
         per_day = QLabel("/ hari")
-        per_day.setStyleSheet("font-size: 12px; font-weight: 400; color: #8C8A86;")
+        per_day.setObjectName("itemPerDay")
         price_row = QHBoxLayout()
         price_row.setContentsMargins(0, 0, 0, 0)
         price_row.setSpacing(0)
@@ -147,42 +156,23 @@ class InventoryCard(QFrame):
         info_layout.addLayout(price_row)
 
         rent_btn = QPushButton("Sewa Sekarang")
-        rent_btn.setCursor(Qt.PointingHandCursor)
-        rent_btn.setFixedHeight(34)
-        rent_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: transparent; border: 0.5px solid #0F6E56; border-radius: 8px;
-                font-size: 12px; font-weight: 500; color: #0F6E56;
-            }}
-            QPushButton:hover {{ background: #F8F7F4; }}
-        """)
+        apply_outline_primary(rent_btn, height=34)
         rent_btn.clicked.connect(lambda: self._on_rent())
         info_layout.addWidget(rent_btn)
 
-        layout.addWidget(img_placeholder)
         layout.addWidget(info)
 
 
 class StatusBadge(QFrame):
     def __init__(self, text, status_type="active"):
         super().__init__()
-        self.setObjectName("badge")
-        colors = {
-            "active": ("#E8F7F2", "#1D9E75"),
-            "overdue": ("#FDE8E8", "#E24B4A"),
-            "pending": ("#FEF3E8", "#BA7517"),
-        }
-        bg_hex, fg_hex = colors.get(status_type, ("#EDECE8", "#6B6A66"))
-        self.setStyleSheet(f"""
-            #badge {{
-                background: {bg_hex}; border-radius: 8px;
-                padding: 4px 12px;
-            }}
-        """)
+        self.setObjectName("statusBadge")
+        self.setProperty("status", status_type)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 4)
         label = QLabel(text)
-        label.setStyleSheet(f"font-size: 11px; font-weight: 600; color: {fg_hex}; background: transparent;")
+        label.setObjectName("badgeText")
+        label.setProperty("textColor", "")
         layout.addWidget(label)
 
 
@@ -194,31 +184,91 @@ class DashboardCustomer(QWidget):
         self._worker = None
         self._build_ui()
 
+    def reset(self):
+        """Reset dashboard state untuk user baru (sebelum login user lain)."""
+        print("[DashboardCustomer.reset] Resetting dashboard for new user...")
+        # Stop worker jika sedang berjalan dan disconnect signals
+        if self._worker:
+            try:
+                # Disconnect semua signals dari worker lama
+                self._worker.result.disconnect()
+                self._worker.error.disconnect()
+                self._worker.finished.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                if self._worker.isRunning():
+                    self._worker.quit()
+                    self._worker.wait()
+            except RuntimeError:
+                pass
+            self._worker = None
+        
+        # Clear UI elements
+        self.welcome_label.setText("Selamat datang")
+        self.welcome_label.repaint()
+        self.date_label.setText("")
+        self.date_label.repaint()
+        self.card_tersedia.set_value(0)
+        self.card_disewa.set_value(0)
+        self.card_menunggu.set_value(0)
+        
+        # Clear inventory grid
+        while self.grid_layout.count():
+            item = self.grid_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Clear rentals table
+        self.rentals_table.setRowCount(0)
+        print("[DashboardCustomer.reset] Dashboard reset complete")
+
     def refresh(self):
         """Load data di background thread agar UI tidak freeze."""
+        # Jangan fetch ulang jika ada worker yang masih jalan
+        try:
+            if self._worker and self._worker.isRunning():
+                print("[DashboardCustomer] Worker sudah jalan, skip refresh")
+                return
+        except RuntimeError:
+            # Worker sudah didelete, set ke None
+            self._worker = None
+        
         self._set_loading(True)
         self._worker = DataWorker(self._fetch_data)
         self._worker.result.connect(self._on_data_loaded)
-        self._worker.error.connect(lambda e: self._set_loading(False))
-        self._worker.finished.connect(lambda: self._set_loading(False))
+        self._worker.error.connect(lambda e: self._on_worker_error(e))
+        self._worker.finished.connect(self._on_worker_finished)
         self._worker.start()
+
+    def _on_worker_error(self, error_msg):
+        """Handle worker error."""
+        print(f"[DashboardCustomer] Error: {error_msg}")
+        self._set_loading(False)
+
+    def _on_worker_finished(self):
+        """Cleanup worker thread setelah selesai."""
+        self._set_loading(False)
+        if self._worker:
+            self._worker.quit()
+            self._worker.wait()
+            self._worker = None
 
     def _build_ui(self):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
         content = QWidget()
-        content.setStyleSheet("background: transparent;")
+        content.setObjectName("pageContent")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(20)
 
         self.welcome_label = QLabel("Selamat datang, Budi")
-        self.welcome_label.setStyleSheet("font-size: 22px; font-weight: 500; color: #1A1A1A; letter-spacing: -0.3px;")
+        self.welcome_label.setObjectName("pageTitle")
         self.date_label = QLabel("")
-        self.date_label.setStyleSheet("font-size: 13px; color: #8C8A86; margin-top: 2px;")
+        self.date_label.setObjectName("muted")
         layout.addWidget(self.welcome_label)
         layout.addWidget(self.date_label)
 
@@ -247,7 +297,7 @@ class DashboardCustomer(QWidget):
 
     def _build_popular_section(self, parent_layout):
         section = QWidget()
-        section.setStyleSheet("background: transparent;")
+        section.setObjectName("section")
         section_layout = QVBoxLayout(section)
         section_layout.setContentsMargins(0, 0, 0, 0)
         section_layout.setSpacing(14)
@@ -255,16 +305,9 @@ class DashboardCustomer(QWidget):
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
         title = QLabel("Inventaris Pilihan")
-        title.setStyleSheet("font-size: 18px; font-weight: 500; color: #1A1A1A;")
+        title.setObjectName("sectionTitle")
         self.lihat_semua_btn = QPushButton("Lihat Semua")
-        self.lihat_semua_btn.setCursor(Qt.PointingHandCursor)
-        self.lihat_semua_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent; border: none;
-                font-size: 13px; font-weight: 500; color: #0F6E56;
-            }
-            QPushButton:hover { color: #0A5A45; }
-        """)
+        apply_link(self.lihat_semua_btn)
         self.lihat_semua_btn.clicked.connect(lambda: self.navigate_to.emit("inventory"))
         header.addWidget(title)
         header.addStretch()
@@ -272,7 +315,7 @@ class DashboardCustomer(QWidget):
         section_layout.addLayout(header)
 
         self.inventory_grid = QWidget()
-        self.inventory_grid.setStyleSheet("background: transparent;")
+        self.inventory_grid.setObjectName("inventoryGrid")
         self.grid_layout = QGridLayout(self.inventory_grid)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
         self.grid_layout.setSpacing(16)
@@ -283,22 +326,16 @@ class DashboardCustomer(QWidget):
     def _build_active_rentals_section(self, parent_layout):
         section = QFrame()
         section.setObjectName("rentalsSection")
-        section.setStyleSheet("""
-            #rentalsSection {
-                background: #ffffff; border: 0.5px solid #E0DDD8;
-                border-radius: 12px;
-            }
-        """)
         section_layout = QVBoxLayout(section)
         section_layout.setContentsMargins(0, 0, 0, 0)
         section_layout.setSpacing(0)
 
         header = QWidget()
-        header.setStyleSheet("background: transparent;")
+        header.setObjectName("sectionHeader")
         h_layout = QHBoxLayout(header)
         h_layout.setContentsMargins(20, 20, 20, 20)
         title = QLabel("Penyewaan Aktif")
-        title.setStyleSheet("font-size: 18px; font-weight: 500; color: #1A1A1A;")
+        title.setObjectName("sectionTitle")
         h_layout.addWidget(title)
         section_layout.addWidget(header)
 
@@ -312,40 +349,19 @@ class DashboardCustomer(QWidget):
         self.rentals_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.rentals_table.verticalHeader().setVisible(False)
         self.rentals_table.setShowGrid(False)
-        self.rentals_table.setStyleSheet("""
-            QTableWidget {
-                border: none; border-top: 0.5px solid #E0DDD8;
-                background: #ffffff; font-size: 13px;
-                gridline-color: transparent;
-            }
-            QTableWidget::item { padding: 12px 16px; border-bottom: 0.5px solid #EDECE8; }
-            QTableWidget::item:selected { background: #E8F0EE; color: #1A1A1A; }
-            QHeaderView::section {
-                background: #F8F7F4; border: none;
-                font-size: 11px; font-weight: 600; color: #8C8A86;
-                padding: 10px 16px; border-bottom: 0.5px solid #E0DDD8;
-                text-transform: uppercase;
-            }
-            QTableWidget::item:hover { background: #FAF9F6; }
-        """)
+        self.rentals_table.setObjectName("rentalsTable")
         self.rentals_table.setFixedWidth(520)
+        # enable sorting for active rentals table
+        self.rentals_table.setSortingEnabled(True)
         section_layout.addWidget(self.rentals_table)
 
         footer = QWidget()
-        footer.setStyleSheet("background: transparent; border-top: 0.5px solid #E0DDD8;")
+        footer.setObjectName("cardFooter")
         f_layout = QVBoxLayout(footer)
         f_layout.setContentsMargins(0, 0, 0, 0)
         detail_btn = QPushButton("Lihat Detail Semua Penyewaan")
-        detail_btn.setCursor(Qt.PointingHandCursor)
-        detail_btn.setFixedHeight(44)
-        detail_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent; border: none;
-                font-size: 13px; font-weight: 400; color: #8C8A86;
-            }
-            QPushButton:hover { color: #0F6E56; }
-        """)
-        detail_btn.clicked.connect(lambda: self.navigate_to.emit("rental"))
+        apply_link(detail_btn, height=44)
+        detail_btn.clicked.connect(lambda: self.navigate_to.emit("history"))
         f_layout.addWidget(detail_btn, 0, Qt.AlignCenter)
         section_layout.addWidget(footer)
 
@@ -365,8 +381,10 @@ class DashboardCustomer(QWidget):
     def _fetch_data(self):
         """Dijalankan di background thread."""
         user    = get_current_user()
+        print(f"[DashboardCustomer._fetch_data] Current user: {user}")
         items   = get_all_inventory() or []
         rentals = get_rentals_for_customer(user["id"]) if user else []
+        print(f"[DashboardCustomer._fetch_data] Fetched {len(items)} items, {len(rentals)} rentals")
         return {"user": user, "items": items, "rentals": rentals}
 
     def _on_data_loaded(self, data):
@@ -377,7 +395,12 @@ class DashboardCustomer(QWidget):
         
         # Update stats cards
         if user:
-            self.welcome_label.setText(f"Selamat datang, {user['name']}")
+            welcome_text = f"Selamat datang, {user['name']}"
+            print(f"[DashboardCustomer._on_data_loaded] Setting welcome text: {welcome_text}")
+            self.welcome_label.setText(welcome_text)
+            self.welcome_label.repaint()
+        else:
+            print("[DashboardCustomer._on_data_loaded] WARNING: user is None!")
 
         now = datetime.now()
         try:
@@ -386,17 +409,8 @@ class DashboardCustomer(QWidget):
             locale_date = now.strftime("%Y-%m-%d")
         self.date_label.setText(locale_date)
 
-        # Hitung inventaris yang tersedia (stock - active rentals)
-        available_count = 0
-        for item in items:
-            stock = item.get("stock", 0)
-            item_rentals = [r for r in get_rentals_by_inventory(item.get("id", "")) or [] 
-                           if r.get("status") in ("pending", "confirmed", "active")]
-            active_rentals = len(item_rentals)
-            available = max(0, stock - active_rentals)
-            if available > 0:
-                available_count += available
-
+        # Hitung barang yang tersedia (tidak sedang disewa semua)
+        available_count = sum(1 for item in items if item.get("stock", 0) > 0)
         self.card_tersedia.set_value(available_count)
 
         active_count = sum(1 for r in rentals if r.get("status") in ("confirmed", "active"))

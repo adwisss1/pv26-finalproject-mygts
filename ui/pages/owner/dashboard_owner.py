@@ -3,7 +3,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QTableWidget, QTableWidgetItem,
-    QHeaderView, QSizePolicy
+    QHeaderView, QSizePolicy, QDialog, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal, QRect
 from PySide6.QtGui import QPainter, QColor, QPen, QFont, QLinearGradient, QBrush
@@ -12,6 +12,10 @@ from controllers.inventory_controller import get_all_inventory
 from controllers.rental_controller import get_rentals_for_owner
 from controllers.auth_controller import get_current_user
 from utils.worker import DataWorker
+from utils.export import prepare_rental_export
+from utils.export import export_csv, export_pdf
+from ui.pages.owner.add_customer_page import AddCustomerDialog
+from ui.components import create_status_badge
 
 MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
                "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
@@ -44,17 +48,8 @@ class MetricCard(QFrame):
         super().__init__()
         self._color = color
         self.setObjectName("metricCard")
+        self.setProperty("accent", color)
         self.setMinimumHeight(100)
-        self.setStyleSheet(f"""
-            #metricCard {{
-                background: #ffffff;
-                border: 1px solid #ECEAE6;
-                border-radius: 14px;
-            }}
-            #metricCard:hover {{
-                border: 1px solid {color};
-            }}
-        """)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 18, 20, 18)
@@ -66,27 +61,18 @@ class MetricCard(QFrame):
         icon_pill = QLabel(icon)
         icon_pill.setFixedSize(36, 36)
         icon_pill.setAlignment(Qt.AlignCenter)
-        icon_pill.setStyleSheet(f"""
-            font-size: 17px;
-            background: {color}18;
-            border-radius: 10px;
-            color: {color};
-        """)
+        icon_pill.setObjectName("metricIcon")
+        icon_pill.setProperty("iconColor", color)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet(
-            "font-size: 12px; font-weight: 500; color: #8C8A86; background: transparent;"
-        )
+        title_label.setObjectName("metricCardTitle")
 
         top_row.addWidget(icon_pill)
         top_row.addWidget(title_label, 1)
         layout.addLayout(top_row)
 
         self.value_label = QLabel(str(value))
-        self.value_label.setStyleSheet(
-            f"font-size: 36px; font-weight: 700; color: {color};"
-            "letter-spacing: -1px; background: transparent;"
-        )
+        self.value_label.setObjectName("metricCardValue")
         layout.addWidget(self.value_label)
 
     def set_value(self, value):
@@ -99,49 +85,40 @@ class MetricCard(QFrame):
 
 class NotificationItem(QFrame):
     clicked = Signal(str)
+    clicked_item = Signal(object)
 
     def __init__(self, dot_color, text, link_text, link_key):
         super().__init__()
         self._key = link_key
-        self.setObjectName("notifItem")
-        self.setStyleSheet("""
-            #notifItem { background: transparent; border-radius: 8px; }
-            #notifItem:hover { background: #F5F4F0; }
-        """)
+        self.setObjectName("notificationItem")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(20, 13, 16, 13)
         layout.setSpacing(14)
 
         dot = QFrame()
         dot.setFixedSize(8, 8)
-        dot.setStyleSheet(f"background: {dot_color}; border-radius: 4px; margin-top: 1px;")
+        dot.setObjectName("notifDot")
+        dot.setProperty("dotColor", dot_color)
         layout.addWidget(dot, 0, Qt.AlignTop)
 
         text_label = QLabel(text)
         text_label.setWordWrap(True)
-        text_label.setStyleSheet(
-            "font-size: 13px; color: #2A2A2A; background: transparent; line-height: 1.4;"
-        )
+        text_label.setObjectName("notifText")
         layout.addWidget(text_label, 1)
 
         link = QPushButton(link_text)
         link.setCursor(Qt.PointingHandCursor)
         link.setFixedHeight(30)
-        link.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: 1px solid #0F6E5640;
-                border-radius: 6px;
-                font-size: 12px; font-weight: 500;
-                color: #0F6E56; padding: 0 10px;
-            }
-            QPushButton:hover {
-                background: #0F6E5610;
-                border-color: #0F6E56;
-            }
-        """)
+        link.setObjectName("notifLink")
         link.clicked.connect(lambda: self.clicked.emit(self._key))
         layout.addWidget(link)
+
+    def mousePressEvent(self, event):
+        try:
+            self.clicked_item.emit(self)
+        except Exception:
+            pass
+        return super().mousePressEvent(event)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -154,7 +131,7 @@ class BarChart(QWidget):
         self._data      = data or []
         self._bar_color = bar_color
         self.setMinimumHeight(200)
-        self.setStyleSheet("background: transparent;")
+        self.setObjectName("transparentContent")
 
     def set_data(self, data):
         self._data = data or []
@@ -246,7 +223,7 @@ class DonutChart(QWidget):
         # data = list of (label, value, color)
         self._data = data or []
         self.setMinimumSize(200, 200)
-        self.setStyleSheet("background: transparent;")
+        self.setObjectName("transparentContent")
 
     def set_data(self, data):
         self._data = data or []
@@ -329,16 +306,64 @@ class DashboardOwner(QWidget):
     def __init__(self):
         super().__init__()
         self._worker      = None   # DataWorker aktif
+        self._data_cached = None   # Cache data untuk menghindari refetch
         self._build_ui()
+
+    def reset(self):
+        """Reset dashboard state untuk owner baru (sebelum login owner lain)."""
+        print("[DashboardOwner.reset] Resetting dashboard for new owner...")
+        # Stop worker jika sedang berjalan dan disconnect signals
+        if self._worker:
+            try:
+                # Disconnect semua signals dari worker lama
+                self._worker.result.disconnect()
+                self._worker.error.disconnect()
+                self._worker.finished.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                if self._worker.isRunning():
+                    self._worker.quit()
+                    self._worker.wait()
+            except RuntimeError:
+                pass
+            self._worker = None
+        
+        # Clear UI elements
+        self.header_title.setText("Halo, Pemilik!")
+        self.card_total.set_value(0)
+        self.card_active.set_value(0)
+        self.card_pending.set_value(0)
+        self.card_overdue.set_value(0)
+        self.recent_table.setRowCount(0)
+        print("[DashboardOwner.reset] Dashboard reset complete")
 
     def refresh(self):
         """Load data di background thread agar UI tidak freeze."""
+        # Jangan fetch ulang jika ada worker yang masih jalan
+        try:
+            if self._worker and self._worker.isRunning():
+                print("[DashboardOwner] Worker sudah jalan, skip refresh")
+                return
+        except RuntimeError:
+            # Worker sudah didelete, set ke None
+            self._worker = None
+        
+        print("[DashboardOwner] Starting data refresh...")
         self._set_loading(True)
         self._worker = DataWorker(self._fetch_all_data)
         self._worker.result.connect(self._on_data_loaded)
         self._worker.error.connect(self._on_data_error)
-        self._worker.finished.connect(lambda: self._set_loading(False))
+        self._worker.finished.connect(self._on_worker_finished)
         self._worker.start()
+
+    def _on_worker_finished(self):
+        """Cleanup worker thread setelah selesai."""
+        self._set_loading(False)
+        if self._worker:
+            self._worker.quit()
+            self._worker.wait()
+            self._worker = None
 
     # ── Fetch (dijalankan di thread) ─────────────────────────────────────
 
@@ -354,6 +379,9 @@ class DashboardOwner(QWidget):
         items   = data["items"]
         rentals = data["rentals"]
         user    = data["user"]
+
+        # keep rentals for export
+        self._rentals = rentals
 
         if user:
             self.header_title.setText(f"Halo, {user.get('name', 'Pemilik')}!")
@@ -401,10 +429,10 @@ class DashboardOwner(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setObjectName("transparentScroll")
 
         content = QWidget()
-        content.setStyleSheet("background: transparent;")
+        content.setObjectName("transparentContent")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(28, 28, 28, 28)
         layout.setSpacing(22)
@@ -416,14 +444,9 @@ class DashboardOwner(QWidget):
         left_header.setSpacing(4)
 
         greeting = QLabel("Selamat datang kembali 👋")
-        greeting.setStyleSheet(
-            "font-size: 13px; color: #8C8A86; font-weight: 400; background: transparent;"
-        )
+        greeting.setObjectName("muted")
         self.header_title = QLabel("Dasbor Pemilik")
-        self.header_title.setStyleSheet(
-            "font-size: 24px; font-weight: 700; color: #111111;"
-            "letter-spacing: -0.5px; background: transparent;"
-        )
+        self.header_title.setObjectName("pageTitle")
         left_header.addWidget(greeting)
         left_header.addWidget(self.header_title)
 
@@ -433,11 +456,7 @@ class DashboardOwner(QWidget):
         today    = datetime.now()
         date_str = today.strftime("%d %B %Y")
         date_pill = QLabel(f"📅  {date_str}")
-        date_pill.setStyleSheet("""
-            font-size: 12px; color: #6B6A66;
-            background: #ECEAE6; border-radius: 20px;
-            padding: 6px 14px;
-        """)
+        date_pill.setObjectName("datePill")
         self.date_label = date_pill
         header.addWidget(date_pill)
 
@@ -445,35 +464,39 @@ class DashboardOwner(QWidget):
         add_customer_btn = QPushButton("➕ Tambah Customer")
         add_customer_btn.setCursor(Qt.PointingHandCursor)
         add_customer_btn.setFixedHeight(36)
-        add_customer_btn.setStyleSheet("""
-            QPushButton {
-                background: #0F6E56;
-                border: none;
-                border-radius: 8px;
-                font-size: 12px;
-                font-weight: 600;
-                color: #ffffff;
-                padding: 0 16px;
-            }
-            QPushButton:hover {
-                background: #0D5A48;
-            }
-        """)
-        add_customer_btn.clicked.connect(lambda: self.navigate_to.emit("add_customer"))
+        add_customer_btn.setObjectName("primary")
+        add_customer_btn.clicked.connect(self._open_add_customer_dialog)
         header.addWidget(add_customer_btn)
 
         # Label loading (tersembunyi saat idle)
         self.loading_label = QLabel("⏳ Memuat data...")
-        self.loading_label.setStyleSheet(
-            "font-size: 12px; color: #0F6E56; background: #E8F0EE;"
-            "border-radius: 12px; padding: 4px 12px;"
-        )
+        self.loading_label.setObjectName("loadingLabel")
         self.loading_label.setVisible(False)
         header.addWidget(self.loading_label)
 
         layout.addLayout(header)
+        # build the rest of dashboard content
+        self._build_metric_and_body(layout)
 
-        # ── Metric cards ─────────────────────────────────────────────────
+        # finalize scroll/content (must be done here where `scroll` and `content` are defined)
+        scroll.setWidget(content)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
+
+    def _open_add_customer_dialog(self):
+        dlg = AddCustomerDialog(self)
+        if dlg.exec() == QDialog.Accepted:
+            # refresh data after new customer
+            try:
+                self.refresh()
+            except Exception:
+                pass
+
+        return
+
+    # ── Metric cards and body (moved out of dialog handler) ──────────
+    def _build_metric_and_body(self, layout):
         self.card_total   = MetricCard("Total Inventaris",       "—", "#0F6E56", "📦")
         self.card_active  = MetricCard("Sedang Disewa",          "—", "#BA7517", "⏱")
         self.card_pending = MetricCard("Menunggu Konfirmasi",    "—", "#3B82F6", "🔔")
@@ -510,7 +533,7 @@ class DashboardOwner(QWidget):
         chart_layout.addLayout(self._card_header("📈  Tren Penyewaan 6 Bulan Terakhir"))
         chart_layout.addWidget(self._separator())
         chart_inner = QWidget()
-        chart_inner.setStyleSheet("background: transparent;")
+        chart_inner.setObjectName("transparentContent")
         ci_l = QVBoxLayout(chart_inner)
         ci_l.setContentsMargins(16, 12, 16, 8)
         self.bar_chart = BarChart([])
@@ -532,7 +555,7 @@ class DashboardOwner(QWidget):
         donut_layout.addLayout(self._card_header("🗂  Distribusi Kategori Inventaris"))
         donut_layout.addWidget(self._separator())
         donut_inner = QWidget()
-        donut_inner.setStyleSheet("background: transparent;")
+        donut_inner.setObjectName("transparentContent")
         di_l = QVBoxLayout(donut_inner)
         di_l.setContentsMargins(16, 16, 16, 8)
         self.donut_chart = DonutChart([])
@@ -550,16 +573,22 @@ class DashboardOwner(QWidget):
         recent_header = self._card_header("🕐  Penyewaan Terbaru")
         view_all_btn = QPushButton("Lihat semua →")
         view_all_btn.setCursor(Qt.PointingHandCursor)
-        view_all_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent; border: none;
-                font-size: 12px; color: #0F6E56; font-weight: 500;
-                padding: 0 20px;
-            }
-            QPushButton:hover { color: #0A5A45; }
-        """)
+        view_all_btn.setObjectName("link")
         view_all_btn.clicked.connect(lambda: self.navigate_to.emit("history"))
         recent_header.addWidget(view_all_btn)
+        
+        # Export buttons for recent rentals
+        btn_export_csv = QPushButton("CSV")
+        btn_export_csv.setCursor(Qt.PointingHandCursor)
+        btn_export_csv.setObjectName("outline")
+        btn_export_csv.clicked.connect(self._export_recent_csv)
+        recent_header.addWidget(btn_export_csv)
+
+        btn_export_pdf = QPushButton("PDF")
+        btn_export_pdf.setCursor(Qt.PointingHandCursor)
+        btn_export_pdf.setObjectName("outline")
+        btn_export_pdf.clicked.connect(self._export_recent_pdf)
+        recent_header.addWidget(btn_export_pdf)
 
         recent_layout.addLayout(recent_header)
         recent_layout.addWidget(self._separator())
@@ -572,50 +601,25 @@ class DashboardOwner(QWidget):
         self.recent_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.recent_table.setAlternatingRowColors(True)
         self.recent_table.setShowGrid(False)
-        self.recent_table.setStyleSheet("""
-            QTableWidget {
-                background: transparent; border: none;
-                alternate-background-color: #F8F7F4;
-                font-size: 12px;
-            }
-            QHeaderView::section {
-                background: #F8F7F4; color: #8C8A86;
-                border: none; border-bottom: 1px solid #ECEAE6;
-                padding: 8px; font-size: 11px; font-weight: 500;
-            }
-            QTableWidget::item { padding: 8px; border: none; }
-            QTableWidget::item:selected { background: #E8F0EE; color: #0F6E56; }
-        """)
+        self.recent_table.setObjectName("rentalsTable")
+        self.recent_table.setSortingEnabled(True)
         recent_layout.addWidget(self.recent_table, 1)
         bottom_row.addWidget(recent_card, 3)
 
         layout.addLayout(bottom_row)
 
-        scroll.setWidget(content)
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(scroll)
-
     # ── Helper UI ─────────────────────────────────────────────────────────
 
     def _make_card_frame(self) -> QFrame:
         card = QFrame()
-        card.setStyleSheet("""
-            QFrame {
-                background: #ffffff;
-                border: 1px solid #ECEAE6;
-                border-radius: 14px;
-            }
-        """)
+        card.setObjectName("cardFrame")
         return card
 
     def _card_header(self, title: str) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setContentsMargins(20, 16, 20, 16)
         lbl = QLabel(title)
-        lbl.setStyleSheet(
-            "font-size: 14px; font-weight: 600; color: #1A1A1A; background: transparent;"
-        )
+        lbl.setObjectName("cardHeader")
         row.addWidget(lbl)
         row.addStretch()
         return row
@@ -623,7 +627,7 @@ class DashboardOwner(QWidget):
     def _separator(self) -> QFrame:
         sep = QFrame()
         sep.setFixedHeight(1)
-        sep.setStyleSheet("background: #F0EFEB; border: none;")
+        sep.setObjectName("divider")
         return sep
 
     # ── Build sub-components ──────────────────────────────────────────────
@@ -641,10 +645,12 @@ class DashboardOwner(QWidget):
             if items_added > 0:
                 sep = QFrame()
                 sep.setFixedHeight(1)
-                sep.setStyleSheet("background: #F0EFEB; border: none; margin: 0 20px;")
+                sep.setObjectName("divider")
                 self.notif_container.addWidget(sep)
             notif = NotificationItem(color, text, "Lihat →", key)
             notif.clicked.connect(self.navigate_to.emit)
+            # allow clicking the whole item to select / highlight it
+            notif.clicked_item.connect(self._on_owner_notif_clicked)
             self.notif_container.addWidget(notif)
             items_added += 1
 
@@ -661,10 +667,20 @@ class DashboardOwner(QWidget):
         if items_added == 0:
             empty = QLabel("✅  Tidak ada tindakan yang diperlukan saat ini.")
             empty.setAlignment(Qt.AlignCenter)
-            empty.setStyleSheet(
-                "font-size: 13px; color: #A8A6A2; padding: 32px 20px; background: transparent;"
-            )
+            empty.setObjectName("emptyText")
             self.notif_container.addWidget(empty)
+
+    def _on_owner_notif_clicked(self, item_widget):
+        # Clear selected on all items
+        for i in range(self.notif_container.count()):
+            it = self.notif_container.itemAt(i).widget()
+            if not it: continue
+            it.setProperty("selected", False)
+            it.style().unpolish(it); it.style().polish(it); it.update()
+
+        # Set selected on clicked
+        item_widget.setProperty("selected", True)
+        item_widget.style().unpolish(item_widget); item_widget.style().polish(item_widget); item_widget.update()
 
     def _build_chart(self, rentals):
         now    = datetime.now()
@@ -732,10 +748,26 @@ class DashboardOwner(QWidget):
 
             # Kolom Status (badge warna)
             status_key = r.get("status", "")
-            label, fg, bg = STATUS_LABELS.get(status_key, (status_key, "#6B6A66", "#EDECE8"))
-            status_item = QTableWidgetItem(f"  {label}  ")
-            status_item.setForeground(QColor(fg))
-            status_item.setBackground(QColor(bg))
-            self.recent_table.setItem(row, 3, status_item)
+            label = STATUS_LABELS.get(status_key, (status_key, "#6B6A66", "#EDECE8"))[0]
+            # use centralized badge widget for consistent styling
+            self.recent_table.setCellWidget(row, 3, create_status_badge(status_key, label))
 
             self.recent_table.setRowHeight(row, 40)
+
+    def _export_recent_csv(self):
+        rents = getattr(self, "_rentals", []) or []
+        if not rents:
+            QMessageBox.information(self, "Export", "Belum ada data untuk di-export.")
+            return
+        flat = prepare_rental_export(rents)
+        path = export_csv(flat)
+        QMessageBox.information(self, "Export CSV", f"Berhasil di-export ke:\n{path}")
+
+    def _export_recent_pdf(self):
+        rents = getattr(self, "_rentals", []) or []
+        if not rents:
+            QMessageBox.information(self, "Export", "Belum ada data untuk di-export.")
+            return
+        flat = prepare_rental_export(rents)
+        path = export_pdf(flat, title="Penyewaan Terbaru - MyGTS")
+        QMessageBox.information(self, "Export PDF", f"Berhasil di-export ke:\n{path}")

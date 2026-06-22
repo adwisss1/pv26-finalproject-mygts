@@ -112,9 +112,7 @@ def _make_thumbnail(item: dict, size: int = 46) -> QWidget:
 
     frame = QFrame()
     frame.setFixedSize(size, size)
-    frame.setStyleSheet(
-        "background: #F8F7F4; border: 1px solid #E0DDD8; border-radius: 8px; overflow: hidden;"
-    )
+    frame.setObjectName("thumbFrame")
     fl = QVBoxLayout(frame)
     fl.setContentsMargins(0, 0, 0, 0)
     fl.setAlignment(Qt.AlignCenter)
@@ -126,7 +124,7 @@ def _make_thumbnail(item: dict, size: int = 46) -> QWidget:
         lbl = QLabel()
         lbl.setFixedSize(size, size)
         lbl.setAlignment(Qt.AlignCenter)
-        lbl.setStyleSheet("background: transparent;")
+        lbl.setObjectName("thumbImage")
         lbl.setPixmap(pixmap)
         fl.addWidget(lbl)
     else:
@@ -134,9 +132,7 @@ def _make_thumbnail(item: dict, size: int = 46) -> QWidget:
         initial = (item.get("name") or "?")[0].upper()
         ph = QLabel(initial)
         ph.setAlignment(Qt.AlignCenter)
-        ph.setStyleSheet(
-            "font-size: 18px; font-weight: 700; color: #A8A6A2; background: transparent;"
-        )
+        ph.setObjectName("thumbInitial")
         fl.addWidget(ph)
 
     lay.addWidget(frame)
@@ -159,18 +155,20 @@ def _calc_status(item):
 class StatusBadge(QFrame):
     def __init__(self, status):
         super().__init__()
-        bg, fg = STATUS_STYLES.get(status, ("#EDECE8", "#6B6A66"))
+        fg = STATUS_STYLES.get(status, ("#EDECE8", "#6B6A66"))[1]
         self.setFixedHeight(26)
+        self.setObjectName("statusBadge")
+        self.setProperty("status", status)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 0, 10, 0)
         layout.setSpacing(6)
-        dot  = QLabel("●")
-        dot.setStyleSheet(f"color: {fg}; font-size: 10px; background: transparent;")
+        dot = QLabel("●")
+        dot.setObjectName("badgeDot")
         text = QLabel(status)
-        text.setStyleSheet(f"color: {fg}; font-size: 11px; font-weight: bold; background: transparent;")
+        text.setObjectName("badgeText")
+        # styling (colors, font-size) handled by QSS via `status` property
         layout.addWidget(dot)
         layout.addWidget(text)
-        self.setStyleSheet(f"background: {bg}; border-radius: 6px;")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -183,12 +181,7 @@ class PhotoUploadZone(QFrame):
         self._path = ""
         self.setFixedHeight(130)
         self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet("""
-            PhotoUploadZone {
-                border: 1.5px dashed #D4D2CD; border-radius: 10px; background: #FAF9F6;
-            }
-            PhotoUploadZone:hover { border-color: #0F6E56; background: #F4F3F0; }
-        """)
+        self.setObjectName("photoZone")
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
         layout.setSpacing(6)
@@ -196,17 +189,17 @@ class PhotoUploadZone(QFrame):
         self._preview = QLabel()
         self._preview.setFixedSize(64, 64)
         self._preview.setAlignment(Qt.AlignCenter)
-        self._preview.setStyleSheet("background: transparent; border-radius: 8px;")
+        self._preview.setObjectName("photoPreview")
         self._preview.hide()
 
         self._icon = QLabel("🖼")
-        self._icon.setStyleSheet("font-size: 30px; color: #A8A6A2; background: transparent;")
+        self._icon.setObjectName("photoIcon")
 
         self.label = QLabel("Klik untuk pilih foto inventaris")
-        self.label.setStyleSheet("font-size: 12px; color: #8C8A86; background: transparent;")
+        self.label.setObjectName("photoLabel")
 
         self._hint = QLabel("PNG, JPG, WEBP — maks 5MB")
-        self._hint.setStyleSheet("font-size: 10px; color: #B0AEA9; background: transparent;")
+        self._hint.setObjectName("photoHint")
 
         layout.addWidget(self._preview, 0, Qt.AlignCenter)
         layout.addWidget(self._icon,   0, Qt.AlignCenter)
@@ -227,10 +220,8 @@ class PhotoUploadZone(QFrame):
                 self._icon.hide()
                 filename = path.replace("\\", "/").split("/")[-1]
                 self.label.setText(f"✓  {filename}")
-                self.label.setStyleSheet("font-size: 12px; color: #0F6E56; background: transparent; font-weight: 600;")
-                self.setStyleSheet(
-                    "PhotoUploadZone { border: 1.5px solid #0F6E56; border-radius: 10px; background: #E8F5F1; }"
-                )
+                self.label.setObjectName("photoLabelUploaded")
+                self.setObjectName("photoZoneUploaded")
 
     def get_path(self) -> str:
         return self._path
@@ -247,14 +238,14 @@ class InventoryDialog(QDialog):
         is_edit    = data is not None
         self.setWindowTitle("Edit Inventaris" if is_edit else "Tambah Inventaris Baru")
         self.setFixedWidth(440)
-        self.setStyleSheet("QDialog { background: #ffffff; }")
+        self.setObjectName("inventoryDialog")
 
         layout = QVBoxLayout(self)
         layout.setSpacing(14)
         layout.setContentsMargins(24, 24, 24, 24)
 
         title = QLabel("Edit Inventaris" if is_edit else "Tambah Inventaris Baru")
-        title.setStyleSheet("font-size: 18px; font-weight: 700; color: #1A1A1A;")
+        title.setObjectName("dialogTitle")
         layout.addWidget(title)
 
         field_style = """
@@ -267,22 +258,17 @@ class InventoryDialog(QDialog):
         lbl_style = "font-size: 12px; font-weight: 600; color: #1A1A1A; padding-bottom: 2px;"
 
         def row(label, widget):
-            l = QLabel(label); l.setStyleSheet(lbl_style)
+            l = QLabel(label); l.setObjectName("formLabel")
             layout.addWidget(l); layout.addWidget(widget)
 
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Contoh: Gendang Beleq")
-        self.name_input.setStyleSheet(field_style)
+        self.name_input.setObjectName("input")
         row("Nama Barang", self.name_input)
 
         self.category_combo = QComboBox()
         self.category_combo.addItems(CATEGORIES)
-        self.category_combo.setStyleSheet("""
-            QComboBox { border: 1px solid #D4D2CD; border-radius: 8px;
-                padding: 10px 12px; font-size: 13px; background: #ffffff; }
-            QComboBox:focus { border-color: #0F6E56; }
-            QComboBox::drop-down { border: none; width: 30px; }
-        """)
+        self.category_combo.setObjectName("combo")
         row("Kategori", self.category_combo)
 
         # Stok + Harga sejajar
@@ -290,18 +276,22 @@ class InventoryDialog(QDialog):
         pair.setSpacing(12)
 
         sl = QVBoxLayout()
-        sl.addWidget(QLabel("Jumlah Stok", styleSheet=lbl_style))
+        lbl_stok = QLabel("Jumlah Stok")
+        lbl_stok.setObjectName("formLabel")
+        sl.addWidget(lbl_stok)
         self.stock_input = QSpinBox()
         self.stock_input.setRange(0, 9999)
-        self.stock_input.setStyleSheet(field_style)
+        self.stock_input.setObjectName("input")
         sl.addWidget(self.stock_input)
 
         pl = QVBoxLayout()
-        pl.addWidget(QLabel("Harga Sewa / Hari", styleSheet=lbl_style))
+        lbl_price = QLabel("Harga Sewa / Hari")
+        lbl_price.setObjectName("formLabel")
+        pl.addWidget(lbl_price)
         self.price_input = QSpinBox()
         self.price_input.setRange(0, 999999999)
         self.price_input.setPrefix("Rp ")
-        self.price_input.setStyleSheet(field_style)
+        self.price_input.setObjectName("input")
         pl.addWidget(self.price_input)
 
         pair.addLayout(sl)
@@ -311,37 +301,33 @@ class InventoryDialog(QDialog):
         self.desc_input = QTextEdit()
         self.desc_input.setPlaceholderText("Deskripsi kondisi atau detail barang...")
         self.desc_input.setMaximumHeight(72)
-        self.desc_input.setStyleSheet(field_style)
+        self.desc_input.setObjectName("textarea")
         row("Deskripsi", self.desc_input)
 
         lbl_foto = QLabel("Foto Inventaris")
-        lbl_foto.setStyleSheet(lbl_style)
+        lbl_foto.setObjectName("formLabel")
         layout.addWidget(lbl_foto)
         self.photo_zone = PhotoUploadZone()
         layout.addWidget(self.photo_zone)
 
         # Tombol
         btn_row = QHBoxLayout()
-        btn_cancel = QPushButton("Batal")
-        btn_cancel.setCursor(Qt.PointingHandCursor)
-        btn_cancel.setStyleSheet("""
-            QPushButton { background: transparent; border: 1px solid #D4D2CD; border-radius: 8px;
-                padding: 10px 24px; font-size: 13px; font-weight: 600; color: #6B6A66; }
-            QPushButton:hover { background: #EDECE8; }
-        """)
-        btn_cancel.clicked.connect(self.reject)
-
+        btn_row.setSpacing(12)  # Jarak antar tombol
+        
         self.btn_save = QPushButton("Simpan")
         self.btn_save.setCursor(Qt.PointingHandCursor)
-        self.btn_save.setStyleSheet("""
-            QPushButton { background: #0F6E56; border: none; border-radius: 8px;
-                padding: 10px 24px; font-size: 13px; font-weight: 600; color: #ffffff; }
-            QPushButton:hover { background: #0A5A45; }
-        """)
+        self.btn_save.setObjectName("success")  # Warna hijau agar terlihat jelas
+        self.btn_save.setMinimumWidth(100)
         self.btn_save.clicked.connect(self._on_save)
+        
+        btn_cancel = QPushButton("Batal")
+        btn_cancel.setCursor(Qt.PointingHandCursor)
+        btn_cancel.setObjectName("outline")
+        btn_cancel.setMinimumWidth(100)
+        btn_cancel.clicked.connect(self.reject)
 
-        btn_row.addWidget(btn_cancel)
         btn_row.addWidget(self.btn_save)
+        btn_row.addWidget(btn_cancel)
         layout.addLayout(btn_row)
 
         if data:
@@ -400,40 +386,22 @@ class InventoryPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setObjectName("transparentScroll")
 
         content = QWidget()
-        content.setStyleSheet("background: transparent;")
+        content.setObjectName("transparentContent")
         layout  = QVBoxLayout(content)
         layout.setContentsMargins(28, 16, 28, 28)
         layout.setSpacing(16)
 
-        # ── Header ────────────────────────────────────────────────────────
-        hdr = QHBoxLayout()
-        hdr.addStretch()
-        self.btn_add = QPushButton("+ Tambah Inventaris Baru")
-        self.btn_add.setCursor(Qt.PointingHandCursor)
-        self.btn_add.setStyleSheet("""
-            QPushButton { background: #0F6E56; border: none; border-radius: 8px;
-                font-size: 13px; font-weight: 700; color: #ffffff; padding: 12px 20px; }
-            QPushButton:hover { background: #0A5A45; }
-        """)
-        self.btn_add.clicked.connect(self._add_dialog)
-        hdr.addWidget(self.btn_add)
-        layout.addLayout(hdr)
-
-        # ── Filter ────────────────────────────────────────────────────────
+        # ── Header & Filter (sejajar) ────────────────────────────────────
         filter_row = QHBoxLayout()
         filter_row.setSpacing(12)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Cari nama barang...")
         self.search_input.setFixedWidth(300)
-        self.search_input.setStyleSheet("""
-            QLineEdit { border: 1px solid #D4D2CD; border-radius: 8px;
-                padding: 10px 14px; font-size: 13px; background: #ffffff; }
-            QLineEdit:focus { border-color: #0F6E56; }
-        """)
+        self.search_input.setObjectName("search")
         self.search_input.textChanged.connect(self._search)
         filter_row.addWidget(self.search_input)
 
@@ -445,23 +413,35 @@ class InventoryPage(QWidget):
         """
         self.category_filter = QComboBox()
         self.category_filter.addItems(["Semua Kategori"] + CATEGORIES)
-        self.category_filter.setStyleSheet(combo_style)
+        self.category_filter.setObjectName("combo")
         self.category_filter.currentTextChanged.connect(self._on_filter)
         filter_row.addWidget(self.category_filter)
 
         self.status_filter = QComboBox()
         self.status_filter.addItems(["Semua Status", "Tersedia", "Semua Disewa", "Tidak Aktif"])
-        self.status_filter.setStyleSheet(combo_style)
+        self.status_filter.setObjectName("combo")
         self.status_filter.currentTextChanged.connect(self._on_filter)
         filter_row.addWidget(self.status_filter)
+        
         filter_row.addStretch()
+        
+        self.btn_export = QPushButton("Export CSV")
+        self.btn_export.setCursor(Qt.PointingHandCursor)
+        self.btn_export.setObjectName("outline")
+        self.btn_export.clicked.connect(lambda: self._export_csv())
+        filter_row.addWidget(self.btn_export)
+
+        self.btn_add = QPushButton("+ Tambah Inventaris Baru")
+        self.btn_add.setCursor(Qt.PointingHandCursor)
+        self.btn_add.setObjectName("primary")
+        self.btn_add.clicked.connect(self._add_dialog)
+        filter_row.addWidget(self.btn_add)
+        
         layout.addLayout(filter_row)
 
         # ── Table ─────────────────────────────────────────────────────────
         self.table_card = QFrame()
-        self.table_card.setStyleSheet(
-            "background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px;"
-        )
+        self.table_card.setObjectName("card")
         tc = QVBoxLayout(self.table_card)
         tc.setContentsMargins(0, 0, 0, 0)
         tc.setSpacing(0)
@@ -472,39 +452,32 @@ class InventoryPage(QWidget):
             ["Foto", "Nama Barang", "Kategori", "Stok Total", "Stok Tersedia", "Status", "Aksi"]
         )
         hv = self.table.horizontalHeader()
-        hv.setSectionResizeMode(0, QHeaderView.Fixed);  self.table.setColumnWidth(0, 80)
+        hv.setSectionResizeMode(0, QHeaderView.Fixed);  self.table.setColumnWidth(0, 70)
         hv.setSectionResizeMode(1, QHeaderView.Stretch)
-        hv.setSectionResizeMode(2, QHeaderView.Fixed);  self.table.setColumnWidth(2, 140)
-        hv.setSectionResizeMode(3, QHeaderView.Fixed);  self.table.setColumnWidth(3, 110)
-        hv.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 110)
-        hv.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 160)
-        hv.setSectionResizeMode(6, QHeaderView.Fixed);  self.table.setColumnWidth(6, 100)
+        hv.setSectionResizeMode(2, QHeaderView.Fixed);  self.table.setColumnWidth(2, 155)
+        hv.setSectionResizeMode(3, QHeaderView.Fixed);  self.table.setColumnWidth(3, 100)
+        hv.setSectionResizeMode(4, QHeaderView.Fixed);  self.table.setColumnWidth(4, 105)
+        hv.setSectionResizeMode(5, QHeaderView.Fixed);  self.table.setColumnWidth(5, 130)
+        hv.setSectionResizeMode(6, QHeaderView.Fixed);  self.table.setColumnWidth(6, 140)
 
         self.table.setSelectionMode(QTableWidget.NoSelection)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
         self.table.verticalHeader().setDefaultSectionSize(64)
         self.table.setFocusPolicy(Qt.NoFocus)
-        self.table.setStyleSheet("""
-            QTableWidget { border: none; background: transparent; font-size: 13px;
-                gridline-color: transparent; outline: none; }
-            QTableWidget::item { padding: 0 16px; border-bottom: 1px solid #F0EFEB; }
-            QHeaderView::section { background: #F8F7F4; border: none; font-size: 12px;
-                font-weight: bold; color: #8C8A86; padding: 14px 16px;
-                border-bottom: 1px solid #E0DDD8; }
-        """)
+        # Enable sorting on columns
+        self.table.setSortingEnabled(True)
+        # table styling handled by global QSS
         tc.addWidget(self.table)
 
         # ── Pagination footer ─────────────────────────────────────────────
         self.footer = QFrame()
-        self.footer.setStyleSheet(
-            "background: #ffffff; border-top: 1px solid #E0DDD8; border-radius: 0 0 12px 12px;"
-        )
+        self.footer.setObjectName("card")
         fl = QHBoxLayout(self.footer)
         fl.setContentsMargins(20, 12, 20, 12)
 
         self.footer_label = QLabel("Menampilkan 0 inventaris")
-        self.footer_label.setStyleSheet("font-size: 12px; color: #8C8A86;")
+        self.footer_label.setObjectName("muted")
         fl.addWidget(self.footer_label)
         fl.addStretch()
 
@@ -515,9 +488,9 @@ class InventoryPage(QWidget):
             QPushButton:disabled { color: #D4D2CD; border-color: #E0DDD8; }
         """
         self.btn_prev = QPushButton("‹"); self.btn_prev.setCursor(Qt.PointingHandCursor)
-        self.btn_prev.setStyleSheet(nav);  self.btn_prev.clicked.connect(self._prev_page)
+        self.btn_prev.setObjectName("nav");  self.btn_prev.clicked.connect(self._prev_page)
         self.btn_next = QPushButton("›"); self.btn_next.setCursor(Qt.PointingHandCursor)
-        self.btn_next.setStyleSheet(nav);  self.btn_next.clicked.connect(self._next_page)
+        self.btn_next.setObjectName("nav");  self.btn_next.clicked.connect(self._next_page)
         fl.addWidget(self.btn_prev); fl.addWidget(self.btn_next)
         tc.addWidget(self.footer)
         layout.addWidget(self.table_card)
@@ -583,10 +556,13 @@ class InventoryPage(QWidget):
             # Col 2 — Kategori
             cat_bg, cat_fg = CATEGORY_PILL_COLORS.get(cat, ("#EDECE8", "#6B6A66"))
             cw = QWidget(); cl = QHBoxLayout(cw); cl.setContentsMargins(16, 0, 16, 0)
-            cb = QFrame();  cb.setFixedHeight(24)
-            cb.setStyleSheet(f"background: {cat_bg}; border-radius: 6px;")
+            cb = QFrame(); cb.setFixedHeight(24)
+            cb.setObjectName("catBadge")
+            cb.setProperty("cat", cat)
             cbl = QHBoxLayout(cb); cbl.setContentsMargins(10, 2, 10, 2)
-            cbl.addWidget(QLabel(cat, styleSheet=f"font-size:11px;font-weight:bold;color:{cat_fg};background:transparent;"))
+            lbl = QLabel(cat)
+            lbl.setObjectName("catLabel")
+            cbl.addWidget(lbl)
             cl.addWidget(cb); cl.addStretch()
             self.table.setCellWidget(row, 2, cw)
 
@@ -602,28 +578,23 @@ class InventoryPage(QWidget):
 
             # Col 5 — Status
             sw = QWidget(); sl2 = QHBoxLayout(sw)
-            sl2.setContentsMargins(12, 0, 12, 0); sl2.setAlignment(Qt.AlignCenter)
-            sl2.addWidget(StatusBadge(status))
+            sl2.setContentsMargins(2, 0, 2, 0); sl2.setAlignment(Qt.AlignCenter)
+            badge = StatusBadge(status)
+            sl2.addWidget(badge)
             self.table.setCellWidget(row, 5, sw)
 
             # Col 6 — Aksi
             aw = QWidget(); al = QHBoxLayout(aw)
-            al.setContentsMargins(8, 0, 8, 0); al.setAlignment(Qt.AlignCenter)
+            al.setContentsMargins(4, 0, 4, 0); al.setSpacing(6); al.setAlignment(Qt.AlignCenter)
 
             btn_edit = QPushButton("✎"); btn_edit.setCursor(Qt.PointingHandCursor)
             btn_edit.setFixedSize(32, 32)
-            btn_edit.setStyleSheet("""
-                QPushButton { background: transparent; border: none; font-size: 16px; color: #8C8A86; }
-                QPushButton:hover { color: #0F6E56; background: #E8F0EE; border-radius: 8px; }
-            """)
+            btn_edit.setObjectName("icon-edit")
             btn_edit.clicked.connect(lambda _, r=global_row: self._edit_row(r))
 
             btn_del = QPushButton("✖"); btn_del.setCursor(Qt.PointingHandCursor)
             btn_del.setFixedSize(32, 32)
-            btn_del.setStyleSheet("""
-                QPushButton { background: transparent; border: none; font-size: 16px; color: #8C8A86; }
-                QPushButton:hover { color: #E24B4A; background: #FEF2F2; border-radius: 8px; }
-            """)
+            btn_del.setObjectName("icon-delete")
             btn_del.clicked.connect(lambda _, r=global_row: self._delete_row(r))
 
             al.addWidget(btn_edit); al.addWidget(btn_del)
@@ -650,6 +621,18 @@ class InventoryPage(QWidget):
 
     def _get_item(self, row) -> dict | None:
         return self._filtered_data[row] if 0 <= row < len(self._filtered_data) else None
+
+    def _export_csv(self):
+        try:
+            from utils.export import export_csv
+            data = self._filtered_data if hasattr(self, '_filtered_data') else (get_all_inventory() or [])
+            if not data:
+                QMessageBox.information(self, "Export", "Tidak ada data untuk diekspor.")
+                return
+            filename = export_csv(data)
+            QMessageBox.information(self, "Export Berhasil", f"Data disimpan ke:\n{filename}")
+        except Exception as e:
+            QMessageBox.critical(self, "Export Gagal", str(e))
 
     def _edit_row(self, row):
         item = self._get_item(row)

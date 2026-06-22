@@ -10,6 +10,7 @@ from PySide6.QtGui import QPixmap, QFont, QColor
 
 from controllers.inventory_controller import CATEGORIES, get_all_inventory, search_inventory
 from controllers.rental_controller import get_rentals_by_inventory
+from ui.components import apply_success, apply_disabled, apply_nav
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  LOAD QPixmap dari URL / base64 / path lokal
@@ -79,95 +80,98 @@ class ItemCard(QFrame):
         self.item_id = item.get("id", "")
         
         # Ukuran fixed untuk setiap kartu agar grid rapi
-        self.setFixedSize(240, 340)
-        self.setStyleSheet("""
-            ItemCard {
-                background: #ffffff;
-                border: 1px solid #E0DDD8;
-                border-radius: 12px;
-            }
-            ItemCard:hover {
-                border-color: #0F6E56;
-                background: #FAFAF9;
-            }
-        """)
+        self.setFixedSize(260, 380)
+        self.setObjectName("invCard")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        # --- 1. Area Gambar ---
+        cat = item.get("category", "")
         img_url = item.get("image_url", "")
+        
+        # ── 1. IMAGE AREA ──
         img_lbl = QLabel()
-        img_lbl.setFixedSize(210, 160)
+        img_lbl.setFixedSize(260, 140)
         img_lbl.setAlignment(Qt.AlignCenter)
-        img_lbl.setStyleSheet("background: #F8F7F4; border-radius: 8px; border: none;")
+        img_lbl.setObjectName("imgPlaceholder")
         
         if img_url:
-            pix = _load_pixmap(img_url, 160)
+            pix = _load_pixmap(img_url, 140)
             if pix:
                 img_lbl.setPixmap(pix)
             else:
                 img_lbl.setText("\U0001f4f7")
-                img_lbl.setStyleSheet("font-size: 32px; color: #D4D2CD; background: #F8F7F4; border-radius: 8px; border: none;")
         else:
             img_lbl.setText("\U0001f4f7")
-            img_lbl.setStyleSheet("font-size: 32px; color: #D4D2CD; background: #F8F7F4; border-radius: 8px; border: none;")
-        layout.addWidget(img_lbl)
-
-        # --- 2. Kategori & Stok ---
-        cat = item.get("category", "")
-        meta_row = QHBoxLayout()
-        meta_row.setContentsMargins(0, 0, 0, 0)
         
+        # ── 2. CATEGORY BADGE (below image) ──
         cat_bg, cat_fg = CATEGORY_PILL_COLORS.get(cat, ("#EDECE8", "#6B6A66"))
-        cb = QLabel(cat)
-        cb.setStyleSheet(f"background: {cat_bg}; color: {cat_fg}; font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 6px; border: none;")
-        meta_row.addWidget(cb)
-        meta_row.addStretch()
+        cat_badge = QFrame()
+        cat_badge.setObjectName("catBadge")
+        cat_badge.setProperty("cat", cat)
+        cb_layout = QHBoxLayout(cat_badge)
+        cb_layout.setContentsMargins(6, 2, 6, 2)
+        cb_layout.setAlignment(Qt.AlignCenter)
+        cb_label = QLabel(cat)
+        cb_label.setObjectName("catLabel")
+        cb_layout.addWidget(cb_label)
         
+        # Image container with category badge
+        image_container = QVBoxLayout()
+        image_container.setContentsMargins(0, 0, 0, 0)
+        image_container.setSpacing(6)
+        image_container.addWidget(img_lbl)
+        image_container.addWidget(cat_badge, 0, Qt.AlignCenter)
+        layout.addLayout(image_container)
+        
+        # ── 3. INFO CONTAINER ──
+        info = QWidget()
+        info.setObjectName("cardInfo")
+        info_layout = QVBoxLayout(info)
+        info_layout.setContentsMargins(16, 12, 16, 16)
+        info_layout.setSpacing(8)
+        
+        # Nama barang
+        name = QLabel(item.get("name", ""))
+        name.setObjectName("itemName")
+        name.setWordWrap(True)
+        info_layout.addWidget(name)
+        
+        # Harga per hari
+        price = QLabel(f"Rp {item.get('price_per_day', 0):,}")
+        price.setObjectName("itemPrice")
+        per_day = QLabel("/ hari")
+        per_day.setObjectName("itemPerDay")
+        price_row = QHBoxLayout()
+        price_row.setContentsMargins(0, 0, 0, 0)
+        price_row.setSpacing(0)
+        price_row.addWidget(price)
+        price_row.addWidget(per_day)
+        price_row.addStretch()
+        info_layout.addLayout(price_row)
+        
+        # Stok info
         stock_lbl = QLabel(f"Stok: {available_stock}")
         stock_color = "#E24B4A" if available_stock <= 0 else "#8C8A86"
-        stock_lbl.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {stock_color}; border: none;")
-        meta_row.addWidget(stock_lbl)
+        stock_lbl.setObjectName("stockLabel")
+        stock_lbl.setProperty("stockColor", stock_color)
+        stock_lbl.setStyleSheet(f"font-size: 12px; color: {stock_color};")
+        info_layout.addWidget(stock_lbl)
         
-        layout.addLayout(meta_row)
-
-        # --- 3. Nama Barang ---
-        name = item.get("name", "")
-        n_lbl = QLabel(name)
-        n_lbl.setWordWrap(True)
-        n_lbl.setFixedHeight(36) # Sediakan ruang untuk 2 baris teks
-        n_lbl.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        n_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #1A1A1A; border: none;")
-        layout.addWidget(n_lbl)
-
-        # --- 4. Harga ---
-        price = item.get("price_per_day", 0)
-        p_lbl = QLabel(f"Rp {price:,.0f} / hari".replace(',', '.'))
-        p_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #0F6E56; border: none;")
-        layout.addWidget(p_lbl)
-
-        layout.addStretch()
-
-        # --- 5. Tombol Aksi ---
+        info_layout.addStretch()
+        
+        # ── 4. ACTION BUTTON ──
         btn = QPushButton("Lihat Detail")
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setFixedHeight(36)
-        
         if available_stock > 0 and _calc_status(item) != "Tidak Aktif":
-            btn.setStyleSheet("""
-                QPushButton { background: #E8F7F2; border: 1px solid #1D9E75; border-radius: 8px; font-size: 13px; font-weight: bold; color: #0F6E56; }
-                QPushButton:hover { background: #0F6E56; color: #ffffff; }
-            """)
+            apply_success(btn, height=34)
             btn.clicked.connect(lambda: self.detail_clicked.emit(self.item_id))
         else:
             btn.setText("Sedang Kosong")
-            btn.setEnabled(False)
-            btn.setStyleSheet("""
-                QPushButton { background: #F8F7F4; border: 1px solid #E0DDD8; border-radius: 8px; font-size: 13px; font-weight: bold; color: #A8A6A2; }
-            """)
-        layout.addWidget(btn)
+            apply_disabled(btn, height=34)
+        info_layout.addWidget(btn)
+        
+        layout.addWidget(info)
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CUSTOMER INVENTORY PAGE (KATALOG WIDGET)
@@ -191,10 +195,10 @@ class InventoryPage(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setObjectName("transparentScroll")
 
         content = QWidget()
-        content.setStyleSheet("background: transparent;")
+        content.setObjectName("transparentContent")
         layout = QVBoxLayout(content)
         layout.setContentsMargins(28, 16, 28, 28)
         layout.setSpacing(24)
@@ -202,15 +206,12 @@ class InventoryPage(QWidget):
         # ── Filter Section ──
         filter_row = QHBoxLayout()
         filter_row.setSpacing(12)
+        filter_row.setAlignment(Qt.AlignVCenter)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Cari nama barang...")
         self.search_input.setFixedWidth(300)
-        self.search_input.setStyleSheet("""
-            QLineEdit { border: 1px solid #D4D2CD; border-radius: 8px; padding: 10px 14px; font-size: 13px; background: #ffffff; }
-            QLineEdit:focus { border-color: #0F6E56; }
-            QLineEdit::placeholder { color: #A8A6A2; }
-        """)
+        self.search_input.setObjectName("search")
         self.search_input.textChanged.connect(self._search)
         filter_row.addWidget(self.search_input)
 
@@ -221,22 +222,31 @@ class InventoryPage(QWidget):
         """
         self.category_filter = QComboBox()
         self.category_filter.addItems(["Semua Kategori"] + CATEGORIES)
-        self.category_filter.setStyleSheet(combo_style)
+        self.category_filter.setObjectName("combo")
+        self.category_filter.setMinimumHeight(36)
         self.category_filter.currentTextChanged.connect(self._on_filter)
         filter_row.addWidget(self.category_filter)
 
         self.status_filter = QComboBox()
         self.status_filter.addItems(["Semua Status", "Tersedia", "Semua Disewa", "Tidak Aktif"])
-        self.status_filter.setStyleSheet(combo_style)
+        self.status_filter.setObjectName("combo")
+        self.status_filter.setMinimumHeight(36)
         self.status_filter.currentTextChanged.connect(self._on_filter)
         filter_row.addWidget(self.status_filter)
+        
+        self.btn_reset = QPushButton("↻ Reset")
+        self.btn_reset.setObjectName("outline")
+        self.btn_reset.setMinimumHeight(36)
+        self.btn_reset.clicked.connect(self._reset_filters)
+        filter_row.addWidget(self.btn_reset)
+        
         filter_row.addStretch()
         
         layout.addLayout(filter_row)
 
         # ── Grid Katalog Section ──
         self.grid_container = QWidget()
-        self.grid_container.setStyleSheet("background: transparent;")
+        self.grid_container.setObjectName("transparentContent")
         self.grid_layout = QGridLayout(self.grid_container)
         self.grid_layout.setContentsMargins(0, 0, 0, 0)
         self.grid_layout.setSpacing(20)
@@ -247,28 +257,21 @@ class InventoryPage(QWidget):
 
         # ── Pagination Footer ──
         self.footer = QFrame()
-        self.footer.setStyleSheet("background: #ffffff; border: 1px solid #E0DDD8; border-radius: 12px;")
+        self.footer.setObjectName("paginationFooter")
         f_layout = QHBoxLayout(self.footer)
         f_layout.setContentsMargins(20, 12, 20, 12)
 
         self.footer_label = QLabel("Menampilkan 0 inventaris")
-        self.footer_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #8C8A86; border: none;")
+        self.footer_label.setObjectName("mutedSmall")
         f_layout.addWidget(self.footer_label)
         f_layout.addStretch()
 
-        nav_style = """
-            QPushButton { background: transparent; border: 1px solid #D4D2CD; border-radius: 8px; padding: 4px 16px; font-size: 16px; font-weight: bold; color: #6B6A66; }
-            QPushButton:hover { background: #F0EFEB; color: #1A1A1A; }
-            QPushButton:disabled { color: #D4D2CD; border-color: #E0DDD8; }
-        """
         self.btn_prev = QPushButton("\u2039")
-        self.btn_prev.setCursor(Qt.PointingHandCursor)
-        self.btn_prev.setStyleSheet(nav_style)
+        apply_nav(self.btn_prev)
         self.btn_prev.clicked.connect(self._prev_page)
         
         self.btn_next = QPushButton("\u203a")
-        self.btn_next.setCursor(Qt.PointingHandCursor)
-        self.btn_next.setStyleSheet(nav_style)
+        apply_nav(self.btn_next)
         self.btn_next.clicked.connect(self._next_page)
         
         f_layout.addWidget(self.btn_prev)
@@ -355,3 +358,11 @@ class InventoryPage(QWidget):
             return
         results = search_inventory(text)
         self._load_data(results)
+
+    def _reset_filters(self):
+        """Reset all filters to default state."""
+        self.search_input.clear()
+        self.category_filter.setCurrentIndex(0)
+        self.status_filter.setCurrentIndex(0)
+        self._page = 0
+        self._load_data()
