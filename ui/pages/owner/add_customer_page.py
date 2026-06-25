@@ -237,6 +237,16 @@ class AddCustomerPage(QWidget):
             QMessageBox.warning(self, "Validasi Gagal", msg)
             return
         
+        konfirmasi = QMessageBox.question(
+            self, 
+            "Konfirmasi", 
+            "Apakah Anda yakin ingin menambahkan akun customer baru ini?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if konfirmasi == QMessageBox.No:
+            return
+            
         # Ambil data
         name = self.field_name.value()
         email = self.field_email.value()

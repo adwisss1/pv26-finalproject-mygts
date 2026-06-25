@@ -2,14 +2,24 @@
 /* Design System: Modern Minimalist */
 
 /* UNIVERSAL PRIMARY BUTTON RULES - Applied first to ensure they override palette defaults */
-QPushButton#primary {
-    background: #0F6E56;
-    color: #ffffff;
-    border: none;
+/* Tambahkan QWidget di depannya untuk memperkuat prioritas (specificity) */
+QWidget QPushButton#primary {
+    background-color: #0F6E56;
+    color: #0F6E56;
+    /* BORDER INI WAJIB: Berfungsi sebagai 'trigger' agar Qt berhenti memakai style bawaan OS */
+    border: 1px solid #0F6E56; 
+    border-radius: 8px;
 }
-QPushButton#primary:hover { background: #0b5a47; color: #ffffff; }
-QPushButton#primary:pressed { background: #08463a; color: #ffffff; }
-QPushButton#primary:focus { background: #0F6E56; color: #ffffff; }
+
+QWidget QPushButton#primary:hover { 
+    background-color: #0b5a47; 
+    border: 1px solid #0b5a47;
+}
+
+QWidget QPushButton#primary:pressed { 
+    background-color: #08463a; 
+    border: 1px solid #08463a;
+}
 
 /* Scrollbar */
 QScrollBar:vertical {
